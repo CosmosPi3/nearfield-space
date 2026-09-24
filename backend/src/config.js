@@ -13,6 +13,7 @@ module.exports = {
   COSINE_API_BASE: 'https://cosine.club/api/v1',
   COSINE_API_KEY,
   COSINE_RATE_LIMIT_PER_MIN: 120,
+  YOUTUBE_COOKIES_FILE: process.env.YOUTUBE_COOKIES_FILE || null,
 
   SAMPLE_RATE: 22050,
   FRAME_SIZE: 2048,

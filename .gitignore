@@ -9,3 +9,4 @@ backend/data/tmp/
 *.log
 .DS_Store
 cosine_api_key
+backend/cookies.txt

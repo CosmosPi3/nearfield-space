@@ -2,7 +2,7 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const fs = require('fs');
 const wav = require('node-wav');
-const { SAMPLE_RATE, SEGMENT_SECONDS, SEGMENT_COUNT, EXTRACTION_TIMEOUT_MS } = require('../config');
+const { SAMPLE_RATE, SEGMENT_SECONDS, SEGMENT_COUNT, EXTRACTION_TIMEOUT_MS, YOUTUBE_COOKIES_FILE } = require('../config');
 const { newTempPath } = require('../utils/tempFiles');
 const { AppError } = require('../utils/errors');
 
@@ -16,10 +16,10 @@ const execFileAsync = promisify(execFile);
 // to injection regardless, but rejecting unexpected hosts keeps scope tight).
 const ALLOWED_HOSTS = [/(?:^|\.)youtube\.com$/i, /^youtu\.be$/i, /(?:^|\.)bandcamp\.com$/i, /(?:^|\.)soundcloud\.com$/i];
 
-// YouTube's signature deciphering requires a JS runtime; Node is already a
-// hard dependency of this app, so point yt-dlp at it instead of also
-// requiring Deno on every host this runs on.
-const JS_RUNTIME_ARGS = ['--js-runtimes', 'node'];
+// YouTube increasingly bot-checks datacenter/cloud IPs and demands a logged-in
+// session; point yt-dlp at an exported cookies.txt (Netscape format) when one
+// is configured. Left unset, yt-dlp just behaves as an anonymous client.
+const COOKIE_ARGS = YOUTUBE_COOKIES_FILE ? ['--cookies', YOUTUBE_COOKIES_FILE] : [];
 
 function assertValidSourceUrl(rawUrl) {
   let url;
@@ -53,7 +53,7 @@ async function probeDurationAndViews(sourceUrl) {
   let stdout;
   try {
     ({ stdout } = await execFileAsync('yt-dlp', [
-      ...JS_RUNTIME_ARGS,
+      ...COOKIE_ARGS,
       '--no-playlist', '--skip-download',
       '--print', '%(duration)s|%(view_count)s',
       url,
@@ -78,7 +78,7 @@ async function probeMetadata(sourceUrl) {
   let stdout;
   try {
     ({ stdout } = await execFileAsync('yt-dlp', [
-      ...JS_RUNTIME_ARGS,
+      ...COOKIE_ARGS,
       '--no-playlist', '--skip-download',
       '--print', '%(title)s|||%(uploader)s',
       url,
@@ -122,7 +122,7 @@ async function downloadSegmentAsWav(sourceUrl, start, end) {
   try {
     // One yt-dlp call does section-cut + resample + mono + wav conversion together.
     await execFileAsync('yt-dlp', [
-      ...JS_RUNTIME_ARGS,
+      ...COOKIE_ARGS,
       '--no-playlist',
       '--download-sections', section,
       '-f', 'bestaudio/best',
