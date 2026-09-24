@@ -16,6 +16,11 @@ const execFileAsync = promisify(execFile);
 // to injection regardless, but rejecting unexpected hosts keeps scope tight).
 const ALLOWED_HOSTS = [/(?:^|\.)youtube\.com$/i, /^youtu\.be$/i, /(?:^|\.)bandcamp\.com$/i, /(?:^|\.)soundcloud\.com$/i];
 
+// YouTube's signature deciphering requires a JS runtime; Node is already a
+// hard dependency of this app, so point yt-dlp at it instead of also
+// requiring Deno on every host this runs on.
+const JS_RUNTIME_ARGS = ['--js-runtimes', 'node'];
+
 function assertValidSourceUrl(rawUrl) {
   let url;
   try {
@@ -48,6 +53,7 @@ async function probeDurationAndViews(sourceUrl) {
   let stdout;
   try {
     ({ stdout } = await execFileAsync('yt-dlp', [
+      ...JS_RUNTIME_ARGS,
       '--no-playlist', '--skip-download',
       '--print', '%(duration)s|%(view_count)s',
       url,
@@ -72,6 +78,7 @@ async function probeMetadata(sourceUrl) {
   let stdout;
   try {
     ({ stdout } = await execFileAsync('yt-dlp', [
+      ...JS_RUNTIME_ARGS,
       '--no-playlist', '--skip-download',
       '--print', '%(title)s|||%(uploader)s',
       url,
@@ -115,6 +122,7 @@ async function downloadSegmentAsWav(sourceUrl, start, end) {
   try {
     // One yt-dlp call does section-cut + resample + mono + wav conversion together.
     await execFileAsync('yt-dlp', [
+      ...JS_RUNTIME_ARGS,
       '--no-playlist',
       '--download-sections', section,
       '-f', 'bestaudio/best',
