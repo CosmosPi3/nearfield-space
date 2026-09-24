@@ -1,0 +1,11 @@
+node_modules/
+backend/.env
+backend/data/*.sqlite3*
+backend/data/backups/
+backend/data/old_cache/
+backend/data/tmp/
+.idea/
+.venv/
+*.log
+.DS_Store
+cosine_api_key

@@ -1,0 +1,1008 @@
+:root {
+  --bg: #0b0d12;
+  --panel: #12151c;
+  --panel-alt: #171b24;
+  --border: #262b36;
+  --text: #e6e8ee;
+  --text-dim: #8b93a3;
+  --accent: #5eb4ff;
+  --accent-dim: #2c5c85;
+  --danger: #e0616b;
+  --radius: 3px; /* sleek/near-square look — applies to every rounded box in the app except true circles (border-radius: 50%) */
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+}
+
+#top-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+#top-bar h1 {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  white-space: nowrap;
+}
+
+#top-bar h1 .brand-primary { font-weight: 500; }
+#top-bar h1 .brand-accent { color: var(--accent); font-weight: 700; }
+#top-bar h1 .brand-dot { color: #f2b134; font-weight: 700; }
+#top-bar h1 .brand-icon { width: 28px; height: 28px; margin-right: 8px; vertical-align: middle; }
+
+#view-tabs { display: flex; gap: 4px; }
+
+.view-tab {
+  padding: 8px 14px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.view-tab:hover { border-color: var(--accent-dim); color: var(--text); }
+.view-tab.active { border-color: var(--accent); color: var(--accent); }
+
+#search-panel { position: relative; flex: 1; max-width: 480px; }
+
+#reset-graph-button {
+  padding: 8px 14px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+#reset-graph-button:hover { border-color: var(--danger); color: var(--danger); }
+#reset-graph-button.hidden { display: none; }
+
+#help-button {
+  flex: 0 0 auto;
+  margin-left: auto;
+  width: 33px;
+  height: 33px;
+  padding: 0;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#help-button:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+#search-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--panel-alt);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 14px;
+}
+
+#search-input:focus { outline: none; border-color: var(--accent-dim); }
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.dropdown.hidden { display: none; }
+
+.dropdown li {
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.dropdown li:hover { background: var(--accent-dim); }
+
+.dropdown .track-title { font-weight: 500; }
+.dropdown .track-artist { color: var(--text-dim); font-size: 12px; }
+
+.dropdown .dropdown-error { color: var(--danger); cursor: default; font-size: 12px; }
+
+.dropdown .dropdown-manual-add .track-title { color: var(--accent); }
+.dropdown .dropdown-error:hover { background: none; }
+
+#sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#sidebar h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 0 0 8px;
+}
+
+/* Shared box treatment for Pinned Tracks and Most Similar To Pinned — same
+   background/border/radius/padding so the two read as matching containers. */
+.sidebar-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+}
+
+#seed-tracks-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+#seed-tracks-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(94,180,255,0.1);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#seed-tracks-list li:hover { border-color: var(--accent); }
+
+#seed-tracks-list img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+#seed-tracks-list .seed-text { flex: 1; overflow: hidden; }
+#seed-tracks-list .seed-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#seed-tracks-list .seed-meta { color: var(--text-dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+#seed-tracks-list .remove-seed {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+#seed-tracks-list .remove-seed:hover { color: var(--danger); }
+
+/* Absolutely positioned against #settings-sheet (its nearest positioned
+   ancestor) rather than the viewport, so it pokes up above the sheet's own
+   top edge and translates up/down together with it — when the sheet is
+   translated fully off-screen, its top edge sits at the viewport's bottom
+   edge, which is exactly where this tab needs to be to stay visible. */
+#settings-pull-tab {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 22px;
+  padding: 0;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+#settings-pull-tab:hover { color: var(--accent); border-color: var(--accent-dim); }
+
+/* Transform-only show/hide (not display:none) so the sheet keeps sliding in
+   from below rather than popping, and the pull tab (a child, see above)
+   stays visible/clickable while the sheet itself is off-screen. */
+#settings-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  z-index: 30;
+  width: min(94vw, 1000px);
+  transform: translate(-50%, 100%);
+  transition: transform 0.22s ease;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 8px 12px;
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
+}
+
+#settings-sheet.open { transform: translate(-50%, 0); }
+
+#settings-sheet-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.sheet-group { flex: 1 1 auto; min-width: 0; }
+
+/* Fixed height (rather than letting content size it) so "Discover settings"
+   — plain text — lines up with "Graph options" — text plus a bordered Reset
+   button, which is taller than a text line on its own. */
+.sheet-group h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 18px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 0 0 4px;
+}
+
+.sheet-group h2 button {
+  padding: 2px 8px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.sheet-group h2 button:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+.sheet-divider {
+  align-self: stretch;
+  width: 1px;
+  background: rgba(230, 232, 238, 0.18);
+}
+
+#settings-sheet .settings-row {
+  display: flex;
+  gap: 8px;
+}
+
+#settings-sheet label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 68px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+#settings-sheet input[type="range"] { width: 100%; }
+
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text-dim);
+  font-size: 9px;
+  cursor: help;
+}
+
+/* Positioned in JS via getBoundingClientRect — `position: fixed` so it's
+   never clipped by #sidebar's overflow-y: auto, unlike an ::after popup would be. */
+.info-tooltip {
+  position: fixed;
+  max-width: 240px;
+  padding: 8px 10px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.4;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+#discover-button {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+  background: var(--accent-dim);
+  border: none;
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+#discover-button:hover { background: var(--accent); color: #06131f; }
+#discover-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+#discover-progress-overlay {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--text-dim);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+#discover-progress-overlay.hidden { display: none; }
+
+.discover-progress-spinner {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: discover-spin 0.8s linear infinite;
+}
+
+@keyframes discover-spin { to { transform: rotate(360deg); } }
+
+.discover-progress-text { white-space: nowrap; }
+
+.discover-progress-bar {
+  width: 120px;
+  height: 4px;
+  flex-shrink: 0;
+  background: var(--panel-alt);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.discover-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+#discover-progress-overlay.indeterminate .discover-progress-fill {
+  width: 30% !important;
+  animation: discover-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes discover-pulse {
+  0% { margin-left: 0%; }
+  50% { margin-left: 70%; }
+  100% { margin-left: 0%; }
+}
+
+#top-similar-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#top-similar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: var(--border) transparent; /* Firefox */
+  scrollbar-width: thin;
+}
+
+#top-similar-list::-webkit-scrollbar { width: 8px; }
+#top-similar-list::-webkit-scrollbar-track { background: transparent; }
+#top-similar-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius); }
+#top-similar-list::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+#top-similar-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#top-similar-list li:hover { border-color: var(--accent-dim); }
+
+#top-similar-list img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+#top-similar-list .top-similar-text { overflow: hidden; }
+#top-similar-list .top-similar-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#top-similar-list .top-similar-meta { color: var(--text-dim); font-size: 11px; }
+#top-similar-list .top-similar-views { color: var(--text-dim); font-size: 10px; font-weight: 700; }
+
+#graph-container {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+#graph-container.hidden, #sidebar.hidden { display: none; }
+
+#library-container {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* visibility, not display:none — the library graph is now constructed
+   eagerly at boot (see main.js) so its force-graph simulation has already
+   settled by the time the tab is actually opened; display:none would
+   collapse this container to 0x0 at construction time, which is exactly
+   what force-graph needs real dimensions for. visibility:hidden keeps the
+   layout box (and thus clientWidth/clientHeight) intact while still
+   painting nothing and blocking pointer events. */
+#library-container.hidden { visibility: hidden; }
+
+.library-graph-controls {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  /* column-gap must clear each thumb's own overflow past its slider's box
+     edge (thumbs are wider than the track and centered on 0%/100%, so they
+     hang 8px out past each side) or adjacent thumbs visually touch/overlap
+     — a 16px gap left zero clearance between them. */
+  column-gap: 40px;
+  row-gap: 8px;
+  padding: 6px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.library-graph-controls label { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+/* margin: 0 strips the UA-default 2px margin on <input type="range">, which
+   otherwise shifts it down relative to the custom sliders (which have no
+   margin) and throws off the vertical alignment across the row. */
+.library-graph-controls input[type="range"] { width: 160px; margin: 0; }
+
+.library-graph-status { display: flex; flex-direction: column; gap: 2px; }
+
+/* Same fixed-width-box technique as .range-slider-value — always "X of Y
+   tracks" (never "585 tracks" alone) specifically so this width stays
+   constant as the match count changes; this is now the leftmost element in
+   the row, so letting it size to content would shove every slider after it
+   back and forth. Sized for up to 4-digit counts ("9999 of 9999 tracks"). */
+.library-graph-status-line {
+  min-width: 12ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.library-graph-divider {
+  align-self: stretch;
+  width: 1px;
+  background: var(--border);
+}
+
+.range-slider-field { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; white-space: nowrap; }
+
+/* Reserves a fixed-width box for the changing "90 – 180"-style text so
+   digit-count changes (e.g. "90" -> "132") don't reflow every slider field
+   to its right — width is fixed regardless of content, only the text inside
+   changes. tabular-nums keeps individual digits from jittering horizontally
+   within that box as they change. */
+.range-slider-value {
+  display: inline-block;
+  /* Must exceed the widest realistic content ("132 – 180", "999 – 2.2B") or
+     it does nothing — a min-width narrower than the actual text still lets
+     the box grow/shrink with it, which is exactly the jitter this is meant
+     to prevent (e.g. BPM going from the 2-digit "90" to the 3-digit "132"
+     widened this box and shoved every slider field to its right over). */
+  min-width: 11ch;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Colors/sizing intentionally match the "Min similarity" native
+   <input type="range">'s unstyled browser-default look (Chrome's own
+   default range-input colors, not this app's --accent/--border theme) —
+   sampled directly from its rendered pixels so the custom dual-thumb
+   sliders read as the same control family, not a different widget. */
+.range-slider {
+  --range-slider-width: 160px;
+  width: var(--range-slider-width);
+  /* Matches the native <input type="range">'s own rendered box height (its
+     thin track sits vertically centered inside that, same as here) — without
+     this, this element collapses to the track's own 6px height and its
+     thumb ends up ~5px higher than the native slider's, visibly misaligned
+     across the row. */
+  height: 16px;
+  position: relative;
+}
+
+.range-slider-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  height: 6px;
+  border-radius: 3px;
+  background: #efefef;
+  touch-action: none;
+}
+
+.range-slider-fill {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 3px;
+  background: #0075ff;
+}
+
+.range-slider-thumb {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border-radius: 50%;
+  background: #0075ff;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.range-slider-thumb:focus-visible {
+  outline: 2px solid #0075ff;
+  outline-offset: 2px;
+}
+
+.range-slider-disabled {
+  opacity: 0.4;
+}
+
+.range-slider-disabled .range-slider-thumb {
+  cursor: default;
+}
+
+.library-graph-canvas { flex: 1 1 auto; position: relative; overflow: hidden; }
+
+.node-tooltip {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.hint { font-size: 12px; color: var(--text-dim); margin: 0 0 10px; }
+
+#node-detail-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  width: 320px;
+  background: var(--panel-alt);
+  border-left: 1px solid var(--border);
+  padding: 16px;
+  padding-top: 40px;
+  overflow-y: auto;
+  box-shadow: -8px 0 24px rgba(0,0,0,0.4);
+}
+
+#node-detail-panel.hidden { display: none; }
+
+#library-node-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  width: 320px;
+  background: var(--panel-alt);
+  border-left: 1px solid var(--border);
+  padding: 16px;
+  padding-top: 40px;
+  overflow-y: auto;
+  box-shadow: -8px 0 24px rgba(0,0,0,0.4);
+}
+
+#library-node-panel.hidden { display: none; }
+
+#library-node-panel .popup-add-to-workspace {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: none;
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+#library-node-panel .popup-add-to-workspace:hover { border-color: var(--accent); }
+
+/* Discover is the most-used action in this panel — full width so it reads
+   as the primary button, rather than sharing a row with Pin/View in library. */
+#node-detail-panel .popup-discover { width: 100%; margin-bottom: 6px; font-weight: 700; }
+
+/* Secondary/outlined look for the row below Discover, which is now the one
+   primary/filled action in this panel. .popup-pin-active (below) still wins
+   out over this when the track is actually pinned. */
+#node-detail-panel .popup-pin, #node-detail-panel .popup-view-in-library {
+  background: none;
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+}
+#node-detail-panel .popup-pin:hover, #node-detail-panel .popup-view-in-library:hover { background: none; border-color: var(--accent); color: var(--accent); }
+
+#node-detail-panel .popup-header-row, #library-node-panel .popup-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+#node-detail-panel .popup-header-text, #library-node-panel .popup-header-text { flex: 1 1 auto; min-width: 0; }
+
+#node-detail-panel .popup-title, #library-node-panel .popup-title { font-weight: 600; margin-bottom: 2px; }
+#node-detail-panel .popup-artist, #library-node-panel .popup-artist { color: var(--text-dim); font-size: 12px; }
+
+#node-detail-panel .popup-external-link, #library-node-panel .popup-external-link { display: block; margin-top: 2px; font-size: 10px; color: var(--accent); text-decoration: none; }
+#node-detail-panel .popup-external-link:hover, #library-node-panel .popup-external-link:hover { text-decoration: underline; }
+
+#node-detail-panel .popup-viewcount, #library-node-panel .popup-viewcount {
+  flex: 0 0 25%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+#node-detail-panel .popup-viewcount-value, #library-node-panel .popup-viewcount-value { font-size: 15px; font-weight: 700; color: var(--accent); line-height: 1.3; }
+#node-detail-panel .popup-viewcount-label, #library-node-panel .popup-viewcount-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+
+#node-detail-panel .popup-chips, #library-node-panel .popup-chips { display: flex; gap: 6px; margin-bottom: 12px; }
+#node-detail-panel .popup-chip, #library-node-panel .popup-chip {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+#node-detail-panel .popup-chip-value, #library-node-panel .popup-chip-value { font-size: 13px; font-weight: 600; color: var(--text); }
+#node-detail-panel .popup-chip-label, #library-node-panel .popup-chip-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+
+#node-detail-panel .popup-section, #library-node-panel .popup-section { margin-bottom: 12px; }
+#node-detail-panel .popup-section-title, #library-node-panel .popup-section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin-bottom: 6px; }
+
+#node-detail-panel .popup-relation-list, #library-node-panel .popup-relation-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+#node-detail-panel .popup-relation-list-scroll, #library-node-panel .popup-relation-list-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-color: var(--border) transparent;
+  scrollbar-width: thin;
+}
+#node-detail-panel .popup-relation-list-scroll::-webkit-scrollbar, #library-node-panel .popup-relation-list-scroll::-webkit-scrollbar { width: 6px; }
+#node-detail-panel .popup-relation-list-scroll::-webkit-scrollbar-track, #library-node-panel .popup-relation-list-scroll::-webkit-scrollbar-track { background: transparent; }
+#node-detail-panel .popup-relation-list-scroll::-webkit-scrollbar-thumb, #library-node-panel .popup-relation-list-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius); }
+
+#node-detail-panel .popup-relation-item, #library-node-panel .popup-relation-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+#node-detail-panel .popup-relation-item:hover, #library-node-panel .popup-relation-item:hover { border-color: var(--accent-dim); }
+
+#node-detail-panel .popup-relation-item img, #library-node-panel .popup-relation-item img,
+#node-detail-panel .popup-relation-thumb-fallback, #library-node-panel .popup-relation-thumb-fallback {
+  width: 34px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+#node-detail-panel .popup-relation-text, #library-node-panel .popup-relation-text { flex: 1; overflow: hidden; }
+#node-detail-panel .popup-relation-title, #library-node-panel .popup-relation-title { font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#node-detail-panel .popup-relation-meta, #library-node-panel .popup-relation-meta { font-size: 10px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#node-detail-panel .popup-relation-scores, #library-node-panel .popup-relation-scores { font-size: 10px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+#node-detail-panel .popup-relation-score-nearfield, #library-node-panel .popup-relation-score-nearfield { color: var(--accent); font-weight: 600; }
+
+/* Bigger standalone card for "Found via" — only ever 0-1 of these, so it can
+   afford more room than the compact .popup-relation-item rows above. */
+#node-detail-panel .popup-found-via-card, #library-node-panel .popup-found-via-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+#node-detail-panel .popup-found-via-card:hover, #library-node-panel .popup-found-via-card:hover { border-color: var(--accent-dim); }
+
+#node-detail-panel .popup-found-via-thumb, #library-node-panel .popup-found-via-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+#node-detail-panel .popup-found-via-text, #library-node-panel .popup-found-via-text { flex: 1; overflow: hidden; }
+#node-detail-panel .popup-found-via-title, #library-node-panel .popup-found-via-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#node-detail-panel .popup-found-via-meta, #library-node-panel .popup-found-via-meta { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+/* Its own line, in accent color, so the ours-vs-cosine.club comparison is
+   obvious at a glance rather than buried at the end of a dense meta line. */
+#node-detail-panel .popup-found-via-cosine, #library-node-panel .popup-found-via-cosine { font-size: 11px; font-weight: 600; color: var(--accent); margin-top: 2px; }
+
+#node-detail-panel .popup-link { display: block; font-size: 12px; color: var(--accent); text-decoration: none; margin-bottom: 4px; }
+#node-detail-panel .popup-link:hover { text-decoration: underline; }
+#node-detail-panel .popup-link:last-of-type { margin-bottom: 10px; }
+
+#node-detail-panel .popup-icon-row, #library-node-panel .popup-icon-row { display: flex; align-items: center; justify-content: space-between; }
+#node-detail-panel .popup-search-icons, #library-node-panel .popup-search-icons { display: flex; gap: 8px; }
+#node-detail-panel .popup-search-icon, #library-node-panel .popup-search-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
+}
+#node-detail-panel .popup-search-icon:hover, #library-node-panel .popup-search-icon:hover { border-color: var(--accent); color: var(--accent); }
+#node-detail-panel .popup-search-icon i, #library-node-panel .popup-search-icon i { font-size: 12px; }
+
+#node-detail-panel .popup-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  margin-left: auto;
+  border-radius: 50%;
+  background: rgba(224, 97, 107, 0.12);
+  border: 1px solid rgba(224, 97, 107, 0.4);
+  color: var(--danger);
+}
+#node-detail-panel .popup-delete:hover { background: var(--danger); border-color: var(--danger); color: var(--text); }
+#node-detail-panel .popup-delete i { font-size: 14px; }
+
+#node-detail-panel .popup-video, #library-node-panel .popup-video { margin-bottom: 10px; }
+
+#node-detail-panel .mini-player, #library-node-panel .mini-player {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+}
+
+#node-detail-panel .mini-player-iframe, #library-node-panel .mini-player-iframe { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: none; }
+
+#node-detail-panel .mini-player-controls, #library-node-panel .mini-player-controls {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0));
+}
+
+#node-detail-panel .mini-player-toggle, #library-node-panel .mini-player-toggle {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 10px;
+}
+#node-detail-panel .mini-player-toggle:hover, #library-node-panel .mini-player-toggle:hover { background: var(--accent); color: #06131f; }
+#node-detail-panel .mini-player-toggle i, #library-node-panel .mini-player-toggle i { font-size: 8px; }
+
+#node-detail-panel .mini-player-scrub, #library-node-panel .mini-player-scrub {
+  position: relative;
+  flex: 1 1 auto;
+  height: 4px;
+  background: var(--panel-alt);
+  border-radius: var(--radius);
+  cursor: pointer;
+  touch-action: none;
+}
+#node-detail-panel .mini-player-scrub-fill, #library-node-panel .mini-player-scrub-fill {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 0%;
+  background: var(--accent);
+  border-radius: var(--radius);
+  transition: width 0.2s ease;
+}
+#node-detail-panel .mini-player-scrub.dragging .mini-player-scrub-fill, #library-node-panel .mini-player-scrub.dragging .mini-player-scrub-fill { transition: none; }
+
+#node-detail-panel .mini-player-time, #library-node-panel .mini-player-time {
+  flex-shrink: 0;
+  min-width: 26px;
+  text-align: right;
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1;
+}
+
+#node-detail-panel .popup-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+
+#node-detail-panel button {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--accent-dim);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#node-detail-panel button:hover { background: var(--accent); color: #06131f; }
+#node-detail-panel button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+#node-detail-panel .popup-btn-icon, #library-node-panel .popup-btn-icon { margin-right: 6px; font-size: 11px; }
+
+#node-detail-panel button.popup-close, #library-node-panel button.popup-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  flex: 0;
+  width: auto;
+  font-size: 17px;
+  color: var(--text-dim);
+}
+#node-detail-panel button.popup-close:hover, #library-node-panel button.popup-close:hover { background: none; color: var(--danger); }
+
+#node-detail-panel button.popup-pin-active { background: var(--accent); color: #06131f; }
+#node-detail-panel button.popup-pin-active:hover { background: var(--danger); color: var(--text); }
+
+#node-detail-panel button.popup-delete:hover { background: var(--danger); color: var(--text); }
+
+#help-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+#help-modal-overlay.hidden { display: none; }
+
+#help-modal {
+  position: relative;
+  width: min(90vw, 440px);
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+#help-modal h2 { margin: 0 0 16px; font-size: 16px; }
+#help-modal h3 { margin: 0 0 4px; font-size: 13px; color: var(--accent); }
+#help-modal section + section { margin-top: 14px; }
+#help-modal p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+
+#help-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+#help-modal-close:hover { color: var(--danger); }

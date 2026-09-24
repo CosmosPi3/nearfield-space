@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nearfield.space</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="top-bar">
+      <h1>
+        <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="16" cy="16" r="13" fill="none" stroke="#2c5c85" stroke-width="2.2" opacity="0.65"/>
+          <circle cx="16" cy="16" r="8.5" fill="none" stroke="#2c5c85" stroke-width="2.4" opacity="0.95"/>
+          <polyline points="5,24 12,15 20,17 28,7" fill="none" stroke="#4588c2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="5" cy="24" r="2.1" fill="#5eb4ff"/>
+          <circle cx="12" cy="15" r="2.3" fill="#5eb4ff"/>
+          <circle cx="20" cy="17" r="2.3" fill="#5eb4ff"/>
+          <circle cx="28" cy="7" r="2.9" fill="#5eb4ff"/>
+        </svg>
+        <span class="brand-primary">nearfield</span><span class="brand-dot">.</span><span class="brand-accent">space</span>
+      </h1>
+      <nav id="view-tabs">
+        <button id="tab-workspace-button" class="view-tab active">Discovery</button>
+        <button id="tab-library-button" class="view-tab">Library</button>
+      </nav>
+      <div id="search-panel">
+        <input type="text" id="search-input" placeholder="Search, or paste a link…" autocomplete="off" />
+        <ul id="search-results" class="dropdown hidden"></ul>
+      </div>
+      <button id="reset-graph-button" title="Clears your current exploration graph — cached distances/features are kept">Reset Graph</button>
+      <button id="help-button" title="How to use Discovery &amp; Library" aria-haspopup="dialog" aria-controls="help-modal">?</button>
+    </header>
+
+    <aside id="sidebar">
+      <section id="seed-tracks-panel" class="sidebar-card">
+        <h2>Pinned Tracks</h2>
+        <ul id="seed-tracks-list"></ul>
+      </section>
+
+      <section id="top-similar-panel" class="sidebar-card">
+        <h2>Most similar to pinned</h2>
+        <p class="hint">Ranked by average distance to every pinned track. Click one for details.</p>
+        <ul id="top-similar-list"></ul>
+      </section>
+    </aside>
+
+    <main id="graph-container"></main>
+    <main id="library-container" class="hidden"></main>
+    <div id="discover-progress-overlay" class="hidden"></div>
+    <aside id="node-detail-panel" class="hidden"></aside>
+    <aside id="library-node-panel" class="hidden"></aside>
+
+    <aside id="settings-sheet">
+      <button id="settings-pull-tab" title="Discover &amp; graph settings" aria-expanded="false" aria-controls="settings-sheet">
+        <i class="fa-solid fa-gear" aria-hidden="true"></i>
+      </button>
+
+      <div id="settings-sheet-content">
+        <section class="sheet-group">
+          <h2>Discover settings</h2>
+          <div class="settings-row">
+            <label><span>Branching <span class="info-icon" tabindex="0" data-tooltip="How many similar tracks to explore outward from each node when you hit Discover. Higher = wider search and more tracks surfaced per hop, but slower and less focused.">?</span> <span id="branching-value">5</span></span><input type="range" id="branching-input" min="2" max="20" step="1" value="5" /></label>
+            <label><span>Depth <span class="info-icon" tabindex="0" data-tooltip="How many hops outward from the clicked track Discover chases similar tracks. Each hop re-runs Branching again from every track found in the previous hop, so this compounds fast — depth 3 at a high branching value can surface a lot of tracks.">?</span> <span id="depth-value">1</span></span><input type="range" id="depth-input" min="1" max="3" step="1" value="1" /></label>
+          </div>
+        </section>
+
+        <div class="sheet-divider"></div>
+
+        <section class="sheet-group">
+          <h2>Graph options <button id="graph-options-reset-button" title="Reset graph options to their defaults">Reset</button></h2>
+          <div class="settings-row">
+            <label><span>Min edge score <span id="edge-threshold-value">0.50</span></span><input type="range" id="edge-threshold-input" min="0" max="1" step="0.01" value="0.5" /></label>
+            <label><span>Min link distance <span id="link-distance-min-value">21</span></span><input type="range" id="link-distance-min-input" min="0" max="100" step="1" value="21" /></label>
+            <label><span>Max link distance <span id="link-distance-max-value">57</span></span><input type="range" id="link-distance-max-input" min="0" max="100" step="1" value="57" /></label>
+            <label><span>Gravity <span id="gravity-value">20</span></span><input type="range" id="gravity-input" min="0" max="100" step="1" value="20" /></label>
+            <label><span>Repulsion <span id="charge-value">33</span></span><input type="range" id="charge-input" min="0" max="100" step="1" value="33" /></label>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <div id="help-modal-overlay" class="hidden">
+      <div id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
+        <button id="help-modal-close" aria-label="Close">&times;</button>
+        <h2 id="help-modal-title">How it works</h2>
+        <section>
+          <h3>Discovery</h3>
+          <p>Search for a track, or paste a YouTube, Discogs, Bandcamp, SoundCloud, or Spotify link, to add it to your graph. Click a node to see details, pin it, or hit Discover to explore similar tracks outward — tune how far it reaches with the settings tab at the bottom of the screen.</p>
+        </section>
+        <section>
+          <h3>Library</h3>
+          <p>Switch to the Library tab to see every track you've added, laid out as one graph connected by similarity. Click a node to view it or add it back into your Discovery workspace.</p>
+        </section>
+        <section>
+          <h3>The Maths</h3>
+          <p>Search and initial lookups go through the cosine.club API separately and its own similarity score is stored alongside ours but isn't what draws the graph. After discovery, a tracks audio is extracted, analysed and reduced to a 39-dimension audio fingerprint: spectral shape (centroid, flatness, rolloff, spread, zero-crossing rate), 13 MFCCs for timbre, tempo, and loudness dynamics, each averaged and varied across two 45-second segments. Each dimension is z-scored, then weighted by feature group — MFCCs 40%, spectral shape 30%, tempo 15%, dynamics 15% — so no group dominates just by having more dimensions. Every edge and distance in the graph is the cosine similarity between two tracks' fingerprints. </p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/force-graph@1.51.4/dist/force-graph.min.js"></script>
+  <script src="js/main.js" type="module"></script>
+</body>
+</html>
