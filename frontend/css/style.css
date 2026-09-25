@@ -1109,7 +1109,29 @@ html, body {
     padding: 8px 12px;
   }
 
-  .library-graph-controls input[type="range"] { width: 120px; }
+  .library-graph-controls input[type="range"] { width: 100px; }
 
-  .range-slider { --range-slider-width: 120px; }
+  .range-slider { --range-slider-width: 100px; }
+
+  /* Row 1: status + divider + Min similarity (right-justified via
+     margin-left:auto on the last item of that line). Row 2: BPM/Views/
+     Energy sharing their own row. The ::after pseudo-element is a real
+     flex item of .library-graph-controls itself — flex-basis:100% at
+     order:4 forces the wrap exactly between "Min similarity" (order:3)
+     and the first .range-slider-field (order:5), same line-break
+     technique used for #top-bar above; no DOM changes needed. */
+  .library-graph-status { order: 1; }
+  .library-graph-divider { order: 2; }
+  .library-graph-controls > label { order: 3; margin-left: auto; }
+  .library-graph-controls::after { content: ''; order: 4; flex-basis: 100%; }
+  .range-slider-field { order: 5; }
+
+  /* CSS-only dividers between BPM/Views/Energy (mirrors .library-graph-
+     divider's look) rather than adding real divider elements to
+     LibraryGraphView.js's markup — targets every .range-slider-field
+     preceded by another one, i.e. Views and Energy, not BPM. */
+  .range-slider-field + .range-slider-field {
+    border-left: 1px solid var(--border);
+    padding-left: 16px;
+  }
 }
