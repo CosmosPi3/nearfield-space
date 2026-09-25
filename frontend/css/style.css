@@ -1099,8 +1099,7 @@ html, body {
   #search-panel { order: 5; max-width: 100%; }
   #reset-graph-button { order: 6; }
 
-  /* Shared toggle-button look for both #topbar-toggle-button and
-     #sidebar-toggle-button, matching #help-button's circular sizing. */
+  /* #topbar-toggle-button's look, matching #help-button's circular sizing. */
   .mobile-menu-toggle {
     display: inline-flex;
     align-items: center;
@@ -1118,39 +1117,14 @@ html, body {
   }
   .mobile-menu-toggle:hover { border-color: var(--accent-dim); color: var(--accent); }
 
-  /* Collapsing hides every other direct child, leaving just the toggle
-     button itself — #top-bar/#sidebar's own height (both "auto" grid
-     rows, see #app above) then shrinks to fit only that button, freeing
-     the rest of the viewport for the graph. */
-  #top-bar.collapsed > *:not(#topbar-toggle-button) { display: none; }
-  #sidebar.collapsed > *:not(#sidebar-toggle-button) { display: none; }
-
-  /* Collapsed #top-bar has only the toggle button left in flow — tighter
-     padding and dropping the (now pointless, still flex-basis:100%) line-
-     break pseudo-element shrinks it much closer to just the button's own
-     size instead of leaving the full expanded row's padding/gap around it. */
-  #top-bar.collapsed { padding: 6px 10px; }
+  /* Collapsing hides just search + Reset Graph (line 2 of the header) —
+     title/tabs/help stay visible on line 1 either way. Dropping the
+     (now pointless, still flex-basis:100%) line-break pseudo-element
+     too avoids it leaving an empty second line behind. */
+  #top-bar.collapsed > #search-panel,
+  #top-bar.collapsed > #reset-graph-button { display: none; }
   #top-bar.collapsed::after { display: none; }
-
-  /* #sidebar-toggle-button floats in the corner (absolute, out of flow)
-     rather than sitting in normal flex flow — as the first child of a
-     column flex container, an in-flow toggle would render on its own
-     line above the card sections, adding height precisely when expanded
-     (the opposite of the point). min-height keeps it fully contained
-     even when every sibling is hidden (collapsed) and #sidebar would
-     otherwise shrink to ~0 — without it, the floating button would spill
-     below #sidebar's own box and get painted over by #graph-container
-     (a later, equally-unstacked sibling). */
-  #sidebar {
-    position: relative;
-    min-height: 45px;
-  }
-  #sidebar-toggle-button {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    z-index: 2;
-  }
+  #top-bar.collapsed { padding: 6px 10px; }
 
   #settings-sheet-content {
     flex-direction: column;

@@ -260,21 +260,16 @@ document.getElementById('reset-graph-button').addEventListener('click', () => {
   graphViewModel.resetGraph();
 });
 
-// Mobile-only hamburger toggles (the buttons themselves are hidden via CSS
-// on desktop, so these listeners are just unreachable there, not disabled) —
-// collapses everything in #top-bar/#sidebar except the toggle button
-// itself, per style.css's `.collapsed` rules, freeing the graph's vertical
-// space on a small screen.
-function setupMobileMenuToggle(toggleId, targetId) {
-  const toggleEl = document.getElementById(toggleId);
-  const targetEl = document.getElementById(targetId);
-  toggleEl.addEventListener('click', () => {
-    const collapsed = targetEl.classList.toggle('collapsed');
-    toggleEl.setAttribute('aria-expanded', String(!collapsed));
-  });
-}
-setupMobileMenuToggle('topbar-toggle-button', 'top-bar');
-setupMobileMenuToggle('sidebar-toggle-button', 'sidebar');
+// Mobile-only hamburger toggle (the button itself is hidden via CSS on
+// desktop, so this listener is just unreachable there, not disabled) —
+// collapses #search-panel/#reset-graph-button, per style.css's
+// `#top-bar.collapsed` rule, freeing the graph's vertical space on a
+// small screen while keeping the title/tabs/help always visible.
+const topbarToggleButtonEl = document.getElementById('topbar-toggle-button');
+topbarToggleButtonEl.addEventListener('click', () => {
+  const collapsed = document.getElementById('top-bar').classList.toggle('collapsed');
+  topbarToggleButtonEl.setAttribute('aria-expanded', String(!collapsed));
+});
 
 const helpModalOverlayEl = document.getElementById('help-modal-overlay');
 document.getElementById('help-button').addEventListener('click', () => {
