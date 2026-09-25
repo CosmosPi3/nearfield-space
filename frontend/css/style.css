@@ -1278,35 +1278,36 @@ html, body {
     position: static;
     flex: 0 0 auto;
     align-self: flex-start;
-    margin-left: 8px;
   }
 
-  /* Header-row quick-pin, styled to match .popup-close's inline sizing.
-     #id-qualified — it's a <button>, so the generic catch-all
+  /* Header-row quick-pin, matching .popup-close's exact recipe — bare
+     icon glyph, no box/border/background, same font-size — rather than
+     a filled circular button, so the two sit at the same visual weight
+     and vertical position. #id-qualified for the same reason as
+     .popup-close: it's a <button>, so the generic catch-all
      "#node-detail-panel button {flex:1;background:var(--accent-dim);
-     border-radius:var(--radius);...}" rule (1 ID + 1 type = higher
-     specificity than a bare class) would otherwise win, rendering it as
-     a wide rectangle rather than a small circular icon. */
+     border-radius:var(--radius);...}" rule (1 ID + 1 type) would
+     otherwise win. Row's own `gap` (not a per-button margin) spaces all
+     three header-row items evenly. */
   #node-detail-panel .popup-header-pin {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
     align-self: flex-start;
-    width: 26px;
-    height: 26px;
+    width: auto;
+    height: auto;
     padding: 0;
     background: none;
-    border: 1px solid var(--accent-dim);
-    border-radius: 50%;
-    color: var(--accent);
-    font-size: 11px;
+    border: none;
+    color: var(--text-dim);
+    font-size: 17px;
     cursor: pointer;
   }
+  /* Color-only, no background fill — a solid-filled circle at this size
+     read as just a plain dot rather than a recognizable pin shape. */
   #node-detail-panel .popup-header-pin.popup-header-pin-active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #06131f;
+    color: var(--accent);
   }
   /* Redundant once expanded — .popup-actions's own Pin button is visible
      there, same reasoning as .popup-expand-toggle hiding itself. */
