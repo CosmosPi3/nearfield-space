@@ -113,7 +113,7 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
         </div>
         ${viewCountHtml}
         <button class="popup-header-pin ${node.kind === 'seed' ? 'popup-header-pin-active' : ''}" title="${node.kind === 'seed' ? 'Unpin' : 'Pin'}">
-          <i class="fa-solid ${node.kind === 'seed' ? 'fa-thumbtack-slash' : 'fa-thumbtack'}" aria-hidden="true"></i>
+          <i class="fa-solid fa-thumbtack" aria-hidden="true"></i>
         </button>
         <button class="popup-close" title="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
