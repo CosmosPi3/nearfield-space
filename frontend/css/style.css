@@ -1266,34 +1266,46 @@ html, body {
      the view count instead of floating in reserved space above
      everything — position:static drops the base rule's absolute
      top-8px/right-8px positioning in favor of participating in that
-     row's flex layout. */
-  #node-detail-panel .popup-close, #library-node-panel .popup-close {
+     row's flex layout. Matches the base rule's own #id+tag.class
+     specificity (button.popup-close, not just .popup-close) so this
+     actually wins the cascade instead of losing to top:8px/right:8px. */
+  #node-detail-panel button.popup-close, #library-node-panel button.popup-close {
     position: static;
     flex: 0 0 auto;
     align-self: flex-start;
-    margin-left: 6px;
+    margin-left: 8px;
   }
 
-  /* Video shrinks to a smaller square-ish box with the stats/hint text
-     as a column beside it, rather than a full-width 16:9 strip above a
-     separate full-width chips row — most tracks' thumbnails are already
-     square (album art), so 16:9 was mostly just black bars. */
+  /* Video shrinks to a square, mostly-content-not-bars box (most tracks'
+     thumbnails are already square album art, so the base 16:9 box was
+     mostly black bars) and takes up most of the row's width, with the
+     stats/hint text as a narrow column beside it — rather than a
+     full-width 16:9 strip above a separate full-width chips row.
+     #id-qualified to match (and beat) the base .mini-player/.popup-video/
+     .popup-chips rules' own #id+class specificity — a plain class
+     selector here would lose the cascade to e.g. .mini-player's
+     width:100%/aspect-ratio:16/9. */
   .popup-media-row {
     display: flex;
     align-items: flex-start;
     gap: 10px;
     margin-bottom: 10px;
   }
-  .popup-media-row > .popup-video {
-    flex: 0 0 40%;
-    width: 40%;
+  #node-detail-panel .popup-media-row > .popup-video,
+  #library-node-panel .popup-media-row > .popup-video {
+    flex: 0 0 62%;
+    width: 62%;
+    aspect-ratio: 1 / 1;
     margin-bottom: 0;
   }
-  .popup-media-row > .popup-chips {
+  #node-detail-panel .popup-media-row > .popup-chips,
+  #library-node-panel .popup-media-row > .popup-chips {
     flex-direction: column;
   }
-  .popup-media-row > .popup-chips,
-  .popup-media-row > .hint {
+  #node-detail-panel .popup-media-row > .popup-chips,
+  #library-node-panel .popup-media-row > .popup-chips,
+  #node-detail-panel .popup-media-row > .hint,
+  #library-node-panel .popup-media-row > .hint {
     flex: 1 1 auto;
     min-width: 0;
     margin-bottom: 0;
