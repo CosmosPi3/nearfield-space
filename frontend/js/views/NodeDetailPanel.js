@@ -37,6 +37,11 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
 
   function open(node) {
     currentNodeId = node.id;
+    // Every open() starts at the mobile peek preview, never mid-expanded —
+    // even if a different node was left expanded, e.g. via a relation-item
+    // click while browsing full details. Harmless on desktop, where
+    // .expanded has no CSS effect.
+    panelEl.classList.remove('expanded');
     panelEl.classList.remove('hidden');
     renderPanel(node.id);
     onSelectionChange?.(node.id);
@@ -100,7 +105,6 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
     const viewInLibraryHtml = node.status === 'ready' ? '<button class="popup-view-in-library"><i class="popup-btn-icon fa-solid fa-book" aria-hidden="true"></i>View in library</button>' : '';
 
     panelEl.innerHTML = `
-      <button class="popup-close" title="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       <div class="popup-header-row">
         <div class="popup-header-text">
           <div class="popup-title">${escapeHtml(node.title || node.label)}</div>
@@ -108,13 +112,22 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
           ${linksHtml}
         </div>
         ${viewCountHtml}
+        <button class="popup-header-pin ${node.kind === 'seed' ? 'popup-header-pin-active' : ''}" title="${node.kind === 'seed' ? 'Unpin' : 'Pin'}">
+          <i class="fa-solid fa-thumbtack" aria-hidden="true"></i>
+        </button>
+        <button class="popup-close" title="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
-      ${videoHtml}
-      ${statsHtml}
-      <button class="popup-discover" ${node.status !== 'ready' || discovering ? 'disabled' : ''}
-        ${isManual ? 'title="Not in cosine.club\'s catalog — searches only tracks already analyzed in this app, not cosine.club\'s full catalog"' : ''}>
-        <i class="popup-btn-icon fa-solid fa-compass" aria-hidden="true"></i>${discovering ? 'Discovering…' : 'Discover'}
-      </button>
+      <div class="popup-media-row">
+        ${videoHtml}
+        <div class="popup-media-side">
+          ${statsHtml}
+          <button class="popup-discover" ${node.status !== 'ready' || discovering ? 'disabled' : ''}
+            ${isManual ? 'title="Not in cosine.club\'s catalog — searches only tracks already analyzed in this app, not cosine.club\'s full catalog"' : ''}>
+            <i class="popup-btn-icon fa-solid fa-compass" aria-hidden="true"></i>${discovering ? 'Discovering…' : 'Discover'}
+          </button>
+        </div>
+      </div>
+      <button class="popup-expand-toggle"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i>View full details</button>
       <div class="popup-actions">
         <button class="popup-pin ${node.kind === 'seed' ? 'popup-pin-active' : ''}">
           <i class="popup-btn-icon fa-solid ${node.kind === 'seed' ? 'fa-thumbtack-slash' : 'fa-thumbtack'}" aria-hidden="true"></i>${node.kind === 'seed' ? 'Unpin' : 'Pin'}
@@ -132,14 +145,23 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
     }
 
     panelEl.querySelector('.popup-close').addEventListener('click', close);
+    // No-op on desktop — .expanded only has a CSS effect within the mobile
+    // media query. Button itself is hidden there via .expanded's own CSS,
+    // so there's no "collapse back to peek" path, only close().
+    panelEl.querySelector('.popup-expand-toggle').addEventListener('click', () => panelEl.classList.toggle('expanded'));
     panelEl.querySelector('.popup-view-in-library')?.addEventListener('click', () => onViewInLibrary?.(nodeId));
-    panelEl.querySelector('.popup-pin').addEventListener('click', () => {
+    function togglePin() {
       if (node.kind === 'seed') {
         graphViewModel.unpinTrack(nodeId);
       } else {
         graphViewModel.pinTrack({ id: nodeId });
       }
-    });
+    }
+    panelEl.querySelector('.popup-pin').addEventListener('click', togglePin);
+    // Mobile-only quick-pin in the header row (hidden via CSS on desktop,
+    // where .popup-actions's own Pin button is already always visible) —
+    // lets a peek-mode user pin without expanding first.
+    panelEl.querySelector('.popup-header-pin').addEventListener('click', togglePin);
     panelEl.querySelector('.popup-discover').addEventListener('click', () => {
       const branching = Math.max(2, parseInt(branchingInputEl.value, 10) || 5);
       const depth = Math.max(1, parseInt(depthInputEl.value, 10) || 1);

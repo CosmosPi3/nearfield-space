@@ -16,7 +16,7 @@ export function createTopSimilarView({ listEl, graphViewModel, onItemClick, onIt
         ${thumbnailImgHtml(node.videoId)}
         <div class="top-similar-text">
           <div class="top-similar-title">${escapeHtml(node.title || node.label)}</div>
-          <div class="top-similar-meta">${escapeHtml(node.artist || '')} · ${toDisplayScore(avgScore).toFixed(2)}</div>
+          <div class="top-similar-meta">${escapeHtml(node.artist || '')} · <span class="top-similar-score">${toDisplayScore(avgScore).toFixed(2)}</span></div>
           <div class="top-similar-views">${views}</div>
         </div>
       `;

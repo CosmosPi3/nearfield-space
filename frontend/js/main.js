@@ -260,6 +260,26 @@ document.getElementById('reset-graph-button').addEventListener('click', () => {
   graphViewModel.resetGraph();
 });
 
+// Mobile-only hamburger toggle (the button itself is hidden via CSS on
+// desktop, so this listener is just unreachable there, not disabled) —
+// collapses #search-panel/#reset-graph-button, per style.css's
+// `#top-bar.collapsed` rule, freeing the graph's vertical space on a
+// small screen while keeping the title/tabs/help always visible.
+const topbarToggleButtonEl = document.getElementById('topbar-toggle-button');
+topbarToggleButtonEl.addEventListener('click', () => {
+  const collapsed = document.getElementById('top-bar').classList.toggle('collapsed');
+  topbarToggleButtonEl.setAttribute('aria-expanded', String(!collapsed));
+  // Collapsing/expanding grows or shrinks #graph-container/#library-
+  // container's actual clientHeight (the "1fr" grid row gets more/less
+  // room), but that's a layout reflow, not a window resize — force-graph's
+  // <canvas> only ever matches its container's size when told to via
+  // resize(), which both views otherwise only call on an actual `resize`
+  // window event. Without this, the canvas stays the old (smaller) size
+  // and the container's now-larger background shows through underneath it.
+  graphView.resize();
+  libraryGraphView.resize();
+});
+
 const helpModalOverlayEl = document.getElementById('help-modal-overlay');
 document.getElementById('help-button').addEventListener('click', () => {
   helpModalOverlayEl.classList.remove('hidden');
@@ -383,6 +403,8 @@ function showWorkspaceTab() {
   // Otherwise a node selected in the Library tab stays open, floating over
   // the Discovery sidebar until manually closed.
   libraryNodePopup.close();
+
+  graphView.resize(); // container may have resized while it was display:none (mirrors showLibraryTab()'s own resize() call below)
 }
 
 async function showLibraryTab() {

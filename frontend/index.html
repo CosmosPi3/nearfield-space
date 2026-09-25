@@ -14,6 +14,9 @@
 <body>
   <div id="app">
     <header id="top-bar">
+      <button id="topbar-toggle-button" class="mobile-menu-toggle" title="Show/hide search &amp; Reset Graph" aria-expanded="true" aria-controls="search-panel reset-graph-button">
+        <i class="fa-solid fa-bars" aria-hidden="true"></i>
+      </button>
       <h1>
         <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
           <circle cx="16" cy="16" r="13" fill="none" stroke="#2c5c85" stroke-width="2.2" opacity="0.65"/>
@@ -46,7 +49,6 @@
 
       <section id="top-similar-panel" class="sidebar-card">
         <h2>Most similar to pinned</h2>
-        <p class="hint">Ranked by average distance to every pinned track. Click one for details.</p>
         <ul id="top-similar-list"></ul>
       </section>
     </aside>

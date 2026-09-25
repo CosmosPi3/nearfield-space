@@ -28,6 +28,11 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddTo
     currentNode = node;
     detail = null;
     loadError = null;
+    // Every open() starts at the mobile peek preview, never mid-expanded —
+    // even if a different node was left expanded, e.g. via a "Similar
+    // tracks" click while browsing full details. Harmless on desktop,
+    // where .expanded has no CSS effect.
+    panelEl.classList.remove('expanded');
     panelEl.classList.remove('hidden');
     render();
     loadDetail(node.id);
@@ -102,7 +107,6 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddTo
     const neighborsHtml = neighborsSectionHtml(neighbors);
 
     panelEl.innerHTML = `
-      <button class="popup-close" title="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       <div class="popup-header-row">
         <div class="popup-header-text">
           <div class="popup-title">${escapeHtml(title)}</div>
@@ -113,9 +117,13 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddTo
           <span class="popup-viewcount-value">${viewCount != null ? viewCount.toLocaleString() : '–'}</span>
           <span class="popup-viewcount-label">views</span>
         </div>
+        <button class="popup-close" title="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
-      ${videoHtml}
-      ${statsHtml}
+      <div class="popup-media-row">
+        ${videoHtml}
+        ${statsHtml}
+      </div>
+      <button class="popup-expand-toggle"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i>View full details</button>
       <button class="popup-add-to-workspace"><i class="popup-btn-icon fa-solid fa-plus" aria-hidden="true"></i>Add to workspace</button>
       ${neighborsHtml}
       ${searchHtml ? `<div class="popup-section"><div class="popup-section-title">Search</div><div class="popup-icon-row"><div class="popup-search-icons">${searchHtml}</div></div></div>` : ''}
@@ -128,6 +136,10 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddTo
     }
 
     panelEl.querySelector('.popup-close').addEventListener('click', close);
+    // No-op on desktop — .expanded only has a CSS effect within the mobile
+    // media query. Button itself is hidden there via .expanded's own CSS,
+    // so there's no "collapse back to peek" path, only close().
+    panelEl.querySelector('.popup-expand-toggle').addEventListener('click', () => panelEl.classList.toggle('expanded'));
     panelEl.querySelector('.popup-add-to-workspace').addEventListener('click', () => {
       onAddToWorkspace?.(node);
     });

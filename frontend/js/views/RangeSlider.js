@@ -199,6 +199,12 @@ export function createRangeSlider({
   minThumbEl.addEventListener('keydown', handleKeyDown);
   maxThumbEl.addEventListener('keydown', handleKeyDown);
 
+  // centerPx() bakes trackEl.clientWidth into each thumb's inline `left`
+  // at render time — without this, resizing the track (viewport resize,
+  // orientation change, or a responsive layout change) leaves the thumbs
+  // at stale pixel offsets from the old width instead of following it.
+  new ResizeObserver(() => render()).observe(trackEl);
+
   render();
 
   function setValues(lo, hi) {

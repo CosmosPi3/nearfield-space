@@ -11,6 +11,10 @@
   --radius: 3px; /* sleek/near-square look — applies to every rounded box in the app except true circles (border-radius: 50%) */
 }
 
+/* Mobile breakpoint convention: every responsive rule in this file targets
+   this same max-width so behavior doesn't drift between different parts of
+   the mobile pass. */
+
 * { box-sizing: border-box; }
 
 html, body {
@@ -480,7 +484,11 @@ html, body {
 
 #top-similar-list .top-similar-text { overflow: hidden; }
 #top-similar-list .top-similar-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#top-similar-list .top-similar-meta { color: var(--text-dim); font-size: 11px; }
+#top-similar-list .top-similar-meta { color: var(--text-dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Matches .popup-relation-score-nearfield's convention elsewhere (the
+   detail panel's relation list) — this is our own nearfield score, so it
+   gets the accent color regardless of device. */
+#top-similar-list .top-similar-score { color: var(--accent); font-weight: 600; }
 #top-similar-list .top-similar-views { color: var(--text-dim); font-size: 10px; font-weight: 700; }
 
 #graph-container {
@@ -617,6 +625,18 @@ html, body {
   background: #0075ff;
   transform: translateY(-50%);
   cursor: pointer;
+}
+
+/* Invisible tap-target expansion (~36px effective) around the 16px thumb.
+   RangeSlider.js's THUMB_SIZE constant drives centerPx() positioning math
+   and must keep matching this thumb's real (visible) width, so the hit box
+   is grown via this pseudo-element instead of resizing the thumb itself —
+   pointer events on it still resolve to the thumb element, which is what
+   RangeSlider.js's handlePointerDown target-checks against. */
+.range-slider-thumb::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
 }
 
 .range-slider-thumb:focus-visible {
@@ -884,6 +904,7 @@ html, body {
 }
 
 #node-detail-panel .mini-player-toggle, #library-node-panel .mini-player-toggle {
+  position: relative;
   flex: 0 0 auto;
   width: 20px;
   height: 20px;
@@ -898,6 +919,15 @@ html, body {
   cursor: pointer;
   font-size: 10px;
 }
+
+/* Invisible tap-target expansion (~36px effective) without growing the
+   visible 20px circle — pointer/click events on a pseudo-element resolve
+   their target to the host element, so this needs no JS changes. */
+#node-detail-panel .mini-player-toggle::before, #library-node-panel .mini-player-toggle::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
 #node-detail-panel .mini-player-toggle:hover, #library-node-panel .mini-player-toggle:hover { background: var(--accent); color: #06131f; }
 #node-detail-panel .mini-player-toggle i, #library-node-panel .mini-player-toggle i { font-size: 8px; }
 
@@ -909,6 +939,16 @@ html, body {
   border-radius: var(--radius);
   cursor: pointer;
   touch-action: none;
+}
+
+/* Invisible vertical tap-target expansion — the visible bar stays a thin
+   4px line, but dragging/tapping anywhere within ~20px of it still hits
+   scrubEl itself (pseudo-element pointer events resolve to their host), so
+   no change to the seek math in miniPlayer.js is needed. */
+#node-detail-panel .mini-player-scrub::before, #library-node-panel .mini-player-scrub::before {
+  content: '';
+  position: absolute;
+  inset: -8px 0;
 }
 #node-detail-panel .mini-player-scrub-fill, #library-node-panel .mini-player-scrub-fill {
   position: absolute;
@@ -1006,3 +1046,416 @@ html, body {
 }
 
 #help-modal-close:hover { color: var(--danger); }
+
+/* Collapses #top-bar/#sidebar down to just this button on mobile (see
+   media query below) — hidden on desktop, where neither section ever
+   needs collapsing. */
+.mobile-menu-toggle { display: none; }
+
+/* "View full details" — hidden on desktop, where the side panel always
+   shows everything at once; only mobile has a peek/expand distinction. */
+.popup-expand-toggle { display: none; }
+
+/* Header-row quick-pin — hidden on desktop, where .popup-actions's own
+   Pin button is already always visible; only mobile's peek mode hides
+   that section, hence this shortcut. */
+.popup-header-pin { display: none; }
+
+/* ---------------------------------------------------------------------
+   Mobile (<=768px) — Tier 2: responsive layout, no new JS/state.
+   #help-modal already scales via width:min(90vw,440px)/max-height:80vh
+   above and needs no override here.
+   --------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  /* #library-container hardcodes grid-row:2 above (needed so it can
+     overlay full-width on desktop) — giving every child an explicit
+     grid-column/grid-row here avoids relying on the auto-placement
+     algorithm to resolve #sidebar/#graph-container's position once the
+     grid is down to a single column. Row 2 is sidebar-only (collapses to
+     0 height via its own .hidden{display:none} when not on Discovery);
+     row 3 is the graph/library layer, sized to fill the rest of the
+     viewport since force-graph needs real dimensions to render into.
+     Sidebar itself stacks above the graph rather than a hide/show drawer —
+     Pinned Tracks/Most Similar became horizontal-scrolling card rows
+     below specifically so that's a small, always-visible strip rather
+     than a tall vertical list eating graph height. */
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
+  }
+
+  #sidebar { grid-column: 1; grid-row: 2; }
+  #graph-container { grid-column: 1; grid-row: 3; }
+  #library-container { grid-column: 1; grid-row: 3; }
+
+  #top-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  /* Explicit visual order (title/tabs/help on line 1, search/reset on
+     line 2) via `order`, not DOM changes. The ::after pseudo-element is a
+     real generated flex item of #top-bar itself — giving it
+     flex-basis:100% and an order between "help" and "search" forces a
+     line-wrap at exactly that point, without needing an empty <div> in
+     the markup or forcing #search-panel to monopolize its own line. */
+  #topbar-toggle-button { order: 0; }
+  #top-bar h1 { order: 1; }
+  #view-tabs { order: 2; }
+  #help-button { order: 3; }
+  #top-bar::after { content: ''; order: 4; flex-basis: 100%; }
+  #search-panel { order: 5; max-width: 100%; }
+  #reset-graph-button { order: 6; }
+
+  /* #topbar-toggle-button's look, matching #help-button's circular sizing. */
+  .mobile-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 33px;
+    height: 33px;
+    padding: 0;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .mobile-menu-toggle:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+  /* Collapsing hides just search + Reset Graph (line 2 of the header) —
+     title/tabs/help stay visible on line 1 either way. Dropping the
+     (now pointless, still flex-basis:100%) line-break pseudo-element
+     too avoids it leaving an empty second line behind. */
+  #top-bar.collapsed > #search-panel,
+  #top-bar.collapsed > #reset-graph-button { display: none; }
+  #top-bar.collapsed::after { display: none; }
+  #top-bar.collapsed { padding: 6px 10px; }
+
+  #settings-sheet-content {
+    flex-direction: column;
+    gap: 12px;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  #settings-sheet .settings-row {
+    flex-wrap: wrap;
+  }
+
+  #settings-sheet label { min-width: 45%; }
+
+  /* Visual reorder only (DOM/desktop order untouched) so Min/Max link
+     distance land on the same wrapped row as each other instead of
+     being split across rows by Gravity sitting between them. */
+  #settings-sheet label:has(#edge-threshold-input) { order: 1; }
+  #settings-sheet label:has(#gravity-input) { order: 2; }
+  #settings-sheet label:has(#link-distance-min-input) { order: 3; }
+  #settings-sheet label:has(#link-distance-max-input) { order: 4; }
+  #settings-sheet label:has(#charge-input) { order: 5; }
+
+  /* Only meaningful as a vertical rule between two side-by-side groups. */
+  .sheet-divider { display: none; }
+
+  .library-graph-controls {
+    column-gap: 12px;
+    row-gap: 8px;
+    padding: 6px 10px;
+  }
+
+  /* The only real <input type="range"> in this container — BPM/Views/
+     Energy are the div-based custom RangeSlider component, not native
+     inputs — so this exclusively targets Min similarity. width:100%
+     lets it stretch across whatever the label's flex:1 below gives it. */
+  .library-graph-controls input[type="range"] { width: 100%; }
+
+  /* Row 1: status + divider + Min similarity, which flex-grows to fill
+     the rest of the row (its input stretches with it via width:100%
+     above) instead of sitting flush right with a gap in between. Row 2:
+     BPM/Views/Energy sharing their own row, separated from row 1 by one
+     horizontal rule (the ::after pseudo below) rather than a divider
+     between every individual filter. The ::after pseudo-element is a
+     real flex item of .library-graph-controls itself — flex-basis:100%
+     at order:4 forces the wrap exactly between "Min similarity"
+     (order:3) and the first .range-slider-field (order:5), same
+     line-break technique used for #top-bar above; no DOM changes
+     needed. */
+  .library-graph-status { order: 1; }
+  .library-graph-divider { order: 2; }
+  .library-graph-controls > label { order: 3; flex: 1 1 auto; }
+  .library-graph-controls::after {
+    content: '';
+    order: 4;
+    flex-basis: 100%;
+    height: 1px;
+    margin: 2px 0 4px;
+    background: var(--border);
+  }
+  /* flex:1 (equal grow, basis 0) splits row 2's full width evenly across
+     BPM/Views/Energy instead of each sizing to a fixed --range-slider-
+     width; min-width:0 lets a flex item shrink below its content's
+     natural width, which the fixed-width .range-slider-value box (11ch)
+     would otherwise prevent. */
+  /* align-items:stretch (overriding the base flex-start) so the wrapper
+     div .range-slider is nested inside (.bpm-filter-slider etc.) actually
+     gets a definite width to stretch to — without this, that wrapper
+     shrink-to-fits its content under flex-start, which .range-slider's
+     own width:100% then has nothing definite to resolve against and
+     collapses to near the thumbs' own intrinsic width instead. */
+  .range-slider-field { order: 5; flex: 1 1 0; min-width: 0; align-items: stretch; }
+  .range-slider-field .range-slider { width: 100%; }
+
+  /* Pinned Tracks / Most Similar: horizontal-scrolling fixed-width card
+     rows instead of tall vertical lists — same <li> markup/JS as desktop,
+     just reflowed as a row. mask-image fades the trailing edge as a
+     static "there's more, swipe" hint; it doesn't track scroll position
+     (so it doesn't disappear once you've scrolled to the end), which is
+     an intentional simplification for now. */
+  #sidebar { padding: 6px; gap: 6px; }
+  .sidebar-card { padding: 6px; }
+  #sidebar h2 { margin: 0 0 4px; }
+
+  #seed-tracks-list, #top-similar-list {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    flex: 0 0 auto;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+  }
+
+  /* Hides the horizontal scrollbar track (mainly a desktop-with-a-mouse
+     thing — touch scrollbars are already auto-hiding) without disabling
+     scrolling itself; the mask-image fade above is the scroll affordance
+     instead. Overrides #top-similar-list's own (desktop, vertical)
+     ::-webkit-scrollbar rules for this breakpoint. */
+  #seed-tracks-list, #top-similar-list { scrollbar-width: none; }
+  #seed-tracks-list::-webkit-scrollbar, #top-similar-list::-webkit-scrollbar { display: none; }
+
+  #seed-tracks-list li, #top-similar-list li {
+    flex: 0 0 170px;
+    gap: 6px;
+    padding: 4px 6px;
+  }
+
+  /* Node detail panels: peek bottom sheet by default (borrows
+     #settings-sheet's positioning convention) so the graph stays visible
+     behind it for browsing several nodes in a row; "View full details"
+     switches to a full-screen takeover for relations/Discover/etc.
+     Visibility itself is still driven by the existing .hidden class
+     (open()/close()) — .expanded only changes geometry and which
+     sections show, independent of that. */
+  #node-detail-panel, #library-node-panel {
+    top: auto;
+    left: 50%;
+    right: auto;
+    width: min(94vw, 480px);
+    max-height: 70vh;
+    /* Same as the side padding now that .popup-close moved into
+       .popup-header-row (see below) instead of floating above it —
+       the base 40px reservation was just empty space once nothing else
+       needed to clear the button's old top-8px/right-8px position. */
+    padding-top: 16px;
+    border-left: none;
+    border-radius: var(--radius) var(--radius) 0 0;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
+    transform: translateX(-50%);
+  }
+
+  /* .popup-close is now a DOM child of .popup-header-row (moved there in
+     NodeDetailPanel.js/LibraryNodePopup.js) so it can sit inline next to
+     the view count instead of floating in reserved space above
+     everything — position:static drops the base rule's absolute
+     top-8px/right-8px positioning in favor of participating in that
+     row's flex layout. Matches the base rule's own #id+tag.class
+     specificity (button.popup-close, not just .popup-close) so this
+     actually wins the cascade instead of losing to top:8px/right:8px. */
+  #node-detail-panel button.popup-close, #library-node-panel button.popup-close {
+    position: static;
+    flex: 0 0 auto;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Header-row quick-pin, matching .popup-close's exact recipe — bare
+     icon glyph, no box/border/background, same font-size — rather than
+     a filled circular button, so the two sit at the same visual weight
+     and vertical position. Both get an identical fixed 20x20 box (rather
+     than width/height:auto) since different icon glyphs' own intrinsic
+     bounding boxes within the same font-size aren't necessarily centered
+     the same way — auto-sizing let that per-glyph difference show up as
+     a slight vertical misalignment between the two buttons.
+     #id-qualified for the same reason as .popup-close: it's a <button>,
+     so the generic catch-all "#node-detail-panel button {flex:1;
+     background:var(--accent-dim);border-radius:var(--radius);...}" rule
+     (1 ID + 1 type) would otherwise win. Row's own `gap` (not a
+     per-button margin) spaces all three header-row items evenly. */
+  #node-detail-panel .popup-header-pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    align-self: flex-start;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 17px;
+    cursor: pointer;
+  }
+  /* Color-only, no background fill — a solid-filled circle at this size
+     read as just a plain dot rather than a recognizable pin shape. */
+  #node-detail-panel .popup-header-pin.popup-header-pin-active {
+    color: var(--accent);
+  }
+  /* Redundant once expanded — .popup-actions's own Pin button is visible
+     there, same reasoning as .popup-expand-toggle hiding itself. */
+  #node-detail-panel.expanded .popup-header-pin {
+    display: none;
+  }
+
+  /* Video shrinks to a square, mostly-content-not-bars box (most tracks'
+     thumbnails are already square album art, so the base 16:9 box was
+     mostly black bars) and takes up most of the row's width, with the
+     stats/hint text as a narrow column beside it — rather than a
+     full-width 16:9 strip above a separate full-width chips row.
+     #id-qualified to match (and beat) the base .mini-player/.popup-video/
+     .popup-chips rules' own #id+class specificity — a plain class
+     selector here would lose the cascade to e.g. .mini-player's
+     width:100%/aspect-ratio:16/9. */
+  .popup-media-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  #node-detail-panel .popup-media-row > .popup-video,
+  #library-node-panel .popup-media-row > .popup-video {
+    flex: 0 0 62%;
+    width: 62%;
+    aspect-ratio: 4 / 3;
+    margin-bottom: 0;
+  }
+  /* #library-node-panel has no .popup-media-side wrapper (no button needs
+     to fill leftover space there) — .popup-chips/.hint sit directly as
+     .popup-media-row's second child instead. */
+  #library-node-panel .popup-media-row > .popup-chips {
+    flex-direction: column;
+  }
+  #library-node-panel .popup-media-row > .popup-chips,
+  #library-node-panel .popup-media-row > .hint {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-bottom: 0;
+  }
+
+  /* #node-detail-panel only: wraps stats + Discover so Discover fills
+     whatever vertical space is left under the chips, aligned with the
+     video's (now taller, stretch-matched) height — Discover is the main
+     Discovery-tab action, so it stays visible in peek mode rather than
+     waiting behind "View full details" like the rest of the actions. */
+  .popup-media-side {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 8px;
+  }
+  #node-detail-panel .popup-media-side > .popup-chips {
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 0;
+  }
+  /* Slightly tighter than desktop's 6px/4px padding and 13px/9px text —
+     four stacked pills in a narrow column read as cramped otherwise. */
+  #node-detail-panel .popup-media-side .popup-chip {
+    padding: 4px 4px;
+  }
+  #node-detail-panel .popup-media-side .popup-chip-value {
+    font-size: 12px;
+  }
+  #node-detail-panel .popup-media-side .popup-chip-label {
+    font-size: 8px;
+  }
+  #node-detail-panel .popup-media-side > .hint {
+    flex: 0 0 auto;
+    margin-bottom: 0;
+  }
+  #node-detail-panel .popup-media-side .popup-discover {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    margin-bottom: 0;
+  }
+
+  #node-detail-panel.expanded, #library-node-panel.expanded {
+    top: 0;
+    left: 0;
+    width: 100vw;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .popup-expand-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 8px;
+    background: none;
+    border: 1px solid var(--accent-dim);
+    border-radius: var(--radius);
+    color: var(--accent);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .popup-expand-toggle:hover { border-color: var(--accent); }
+
+  /* Peek mode truncates the title/artist with an ellipsis instead of
+     wrapping — there's less width to work with than the always-visible
+     .popup-header-text/min-width:0 assumed, and wrapping pushes the
+     view count/pin/close row down unpredictably. Expanded mode keeps
+     wrapping (dropped via :not(.expanded)) since it has the full-width
+     screen to spare. */
+  #node-detail-panel:not(.expanded) .popup-title,
+  #node-detail-panel:not(.expanded) .popup-artist,
+  #library-node-panel:not(.expanded) .popup-title,
+  #library-node-panel:not(.expanded) .popup-artist {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Peek mode hides everything below the media row except Discover (now
+     living inside .popup-media-side, see above) — pin/view-in-library,
+     Add-to-workspace, and every .popup-section (relations, Found via,
+     Search+delete) only show once expanded. The toggle button itself
+     only makes sense in peek mode (there's no "collapse back to peek"
+     path, only close()). */
+  #node-detail-panel:not(.expanded) .popup-actions,
+  #node-detail-panel:not(.expanded) .popup-section,
+  #library-node-panel:not(.expanded) .popup-add-to-workspace,
+  #library-node-panel:not(.expanded) .popup-section {
+    display: none;
+  }
+  #node-detail-panel.expanded .popup-expand-toggle,
+  #library-node-panel.expanded .popup-expand-toggle {
+    display: none;
+  }
+}

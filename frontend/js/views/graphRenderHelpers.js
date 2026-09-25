@@ -23,6 +23,17 @@ export function nodeRadius(node) {
   return Math.sqrt(nodeSizeValue(node)) * NODE_REL_SIZE;
 }
 
+// Extra invisible hit-radius on top of the visible node circle, touch only —
+// desktop pointer precision doesn't need it, and growing the *drawn* circle
+// itself would change how dense the graph looks. Used by nodePointerAreaPaint
+// (force-graph's separate off-screen hit-test canvas), never by
+// nodeCanvasObject's actual drawing, so the visible thumbnails/circles are
+// unaffected either way.
+const MOBILE_NODE_HIT_PADDING = 6;
+export function nodeHitRadius(node, isMobile) {
+  return nodeRadius(node) + (isMobile ? MOBILE_NODE_HIT_PADDING : 0);
+}
+
 // Thumbnails are lazy-loaded and cached by videoId — nodeCanvasObject runs
 // every frame, so we must never construct a new Image() there. Once loaded,
 // the force simulation may already have settled (no more automatic redraws),
