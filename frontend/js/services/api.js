@@ -1,3 +1,5 @@
+import { getDeviceId } from './deviceId.js';
+
 const BASE = (() => {
   const { hostname } = window.location;
   if (hostname === 'localhost' || hostname === '127.0.0.1') return '/api';
@@ -13,6 +15,15 @@ async function handle(res) {
     throw err;
   }
   return res.json();
+}
+
+// Scopes the Discover workspace to this browser/device -- every request
+// carries the same generated id so the backend never mixes one device's
+// graph with another's.
+async function workspaceFetch(path, options = {}) {
+  const headers = { ...(options.headers || {}), 'X-Device-Id': getDeviceId() };
+  const res = await fetch(`${BASE}/workspace${path}`, { ...options, headers });
+  return handle(res);
 }
 
 export async function search(query) {
@@ -57,48 +68,42 @@ export async function addManualTrack(url) {
 }
 
 export async function getWorkspace() {
-  const res = await fetch(`${BASE}/workspace`);
-  return handle(res);
+  return workspaceFetch('');
 }
 
 export async function addWorkspaceNode({ id, kind, viaId = null, cosineScore = null }) {
-  const res = await fetch(`${BASE}/workspace/nodes`, {
+  return workspaceFetch('/nodes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, kind, viaId, cosineScore }),
   });
-  return handle(res);
 }
 
 // Records an additional (non-primary) parent relationship for a track
-// that's already in the graph — used when a second, independent discovery
+// that's already in the graph -- used when a second, independent discovery
 // run surfaces an already-known track from a different pinned seed.
 export async function addWorkspaceDiscovery({ childId, parentId, similarity = null, cosineScore = null }) {
-  const res = await fetch(`${BASE}/workspace/discoveries`, {
+  return workspaceFetch('/discoveries', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ childId, parentId, similarity, cosineScore }),
   });
-  return handle(res);
 }
 
 export async function setWorkspaceNodeSimilarity(id, similarity) {
-  const res = await fetch(`${BASE}/workspace/nodes/${encodeURIComponent(id)}/similarity`, {
+  return workspaceFetch(`/nodes/${encodeURIComponent(id)}/similarity`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ similarity }),
   });
-  return handle(res);
 }
 
 export async function removeWorkspaceNode(id) {
-  const res = await fetch(`${BASE}/workspace/nodes/${encodeURIComponent(id)}`, { method: 'DELETE' });
-  return handle(res);
+  return workspaceFetch(`/nodes/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
 export async function clearWorkspace() {
-  const res = await fetch(`${BASE}/workspace`, { method: 'DELETE' });
-  return handle(res);
+  return workspaceFetch('', { method: 'DELETE' });
 }
 
 export async function getBatchDistances(ids, threshold = 0.85) {
