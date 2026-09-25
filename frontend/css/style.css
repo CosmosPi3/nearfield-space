@@ -485,6 +485,10 @@ html, body {
 #top-similar-list .top-similar-text { overflow: hidden; }
 #top-similar-list .top-similar-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #top-similar-list .top-similar-meta { color: var(--text-dim); font-size: 11px; }
+/* Matches .popup-relation-score-nearfield's convention elsewhere (the
+   detail panel's relation list) — this is our own nearfield score, so it
+   gets the accent color regardless of device. */
+#top-similar-list .top-similar-score { color: var(--accent); font-weight: 600; }
 #top-similar-list .top-similar-views { color: var(--text-dim); font-size: 10px; font-weight: 700; }
 
 #graph-container {
