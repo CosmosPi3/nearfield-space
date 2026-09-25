@@ -1125,6 +1125,33 @@ html, body {
   #top-bar.collapsed > *:not(#topbar-toggle-button) { display: none; }
   #sidebar.collapsed > *:not(#sidebar-toggle-button) { display: none; }
 
+  /* Collapsed #top-bar has only the toggle button left in flow — tighter
+     padding and dropping the (now pointless, still flex-basis:100%) line-
+     break pseudo-element shrinks it much closer to just the button's own
+     size instead of leaving the full expanded row's padding/gap around it. */
+  #top-bar.collapsed { padding: 6px 10px; }
+  #top-bar.collapsed::after { display: none; }
+
+  /* #sidebar-toggle-button floats in the corner (absolute, out of flow)
+     rather than sitting in normal flex flow — as the first child of a
+     column flex container, an in-flow toggle would render on its own
+     line above the card sections, adding height precisely when expanded
+     (the opposite of the point). min-height keeps it fully contained
+     even when every sibling is hidden (collapsed) and #sidebar would
+     otherwise shrink to ~0 — without it, the floating button would spill
+     below #sidebar's own box and get painted over by #graph-container
+     (a later, equally-unstacked sibling). */
+  #sidebar {
+    position: relative;
+    min-height: 45px;
+  }
+  #sidebar-toggle-button {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 2;
+  }
+
   #settings-sheet-content {
     flex-direction: column;
     gap: 12px;
