@@ -1047,6 +1047,11 @@ html, body {
 
 #help-modal-close:hover { color: var(--danger); }
 
+/* Collapses #top-bar/#sidebar down to just this button on mobile (see
+   media query below) — hidden on desktop, where neither section ever
+   needs collapsing. */
+.mobile-menu-toggle { display: none; }
+
 /* ---------------------------------------------------------------------
    Mobile (<=768px) — Tier 2: responsive layout, no new JS/state.
    #help-modal already scales via width:min(90vw,440px)/max-height:80vh
@@ -1086,12 +1091,39 @@ html, body {
      flex-basis:100% and an order between "help" and "search" forces a
      line-wrap at exactly that point, without needing an empty <div> in
      the markup or forcing #search-panel to monopolize its own line. */
+  #topbar-toggle-button { order: 0; }
   #top-bar h1 { order: 1; }
   #view-tabs { order: 2; }
   #help-button { order: 3; }
   #top-bar::after { content: ''; order: 4; flex-basis: 100%; }
   #search-panel { order: 5; max-width: 100%; }
   #reset-graph-button { order: 6; }
+
+  /* Shared toggle-button look for both #topbar-toggle-button and
+     #sidebar-toggle-button, matching #help-button's circular sizing. */
+  .mobile-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 33px;
+    height: 33px;
+    padding: 0;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .mobile-menu-toggle:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+  /* Collapsing hides every other direct child, leaving just the toggle
+     button itself — #top-bar/#sidebar's own height (both "auto" grid
+     rows, see #app above) then shrinks to fit only that button, freeing
+     the rest of the viewport for the graph. */
+  #top-bar.collapsed > *:not(#topbar-toggle-button) { display: none; }
+  #sidebar.collapsed > *:not(#sidebar-toggle-button) { display: none; }
 
   #settings-sheet-content {
     flex-direction: column;

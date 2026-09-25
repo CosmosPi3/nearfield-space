@@ -14,6 +14,9 @@
 <body>
   <div id="app">
     <header id="top-bar">
+      <button id="topbar-toggle-button" class="mobile-menu-toggle" title="Show/hide the top bar" aria-expanded="true" aria-controls="top-bar">
+        <i class="fa-solid fa-bars" aria-hidden="true"></i>
+      </button>
       <h1>
         <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
           <circle cx="16" cy="16" r="13" fill="none" stroke="#2c5c85" stroke-width="2.2" opacity="0.65"/>
@@ -39,6 +42,9 @@
     </header>
 
     <aside id="sidebar">
+      <button id="sidebar-toggle-button" class="mobile-menu-toggle" title="Show/hide pinned &amp; similar tracks" aria-expanded="true" aria-controls="sidebar">
+        <i class="fa-solid fa-bars" aria-hidden="true"></i>
+      </button>
       <section id="seed-tracks-panel" class="sidebar-card">
         <h2>Pinned Tracks</h2>
         <ul id="seed-tracks-list"></ul>

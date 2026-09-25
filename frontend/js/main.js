@@ -260,6 +260,22 @@ document.getElementById('reset-graph-button').addEventListener('click', () => {
   graphViewModel.resetGraph();
 });
 
+// Mobile-only hamburger toggles (the buttons themselves are hidden via CSS
+// on desktop, so these listeners are just unreachable there, not disabled) —
+// collapses everything in #top-bar/#sidebar except the toggle button
+// itself, per style.css's `.collapsed` rules, freeing the graph's vertical
+// space on a small screen.
+function setupMobileMenuToggle(toggleId, targetId) {
+  const toggleEl = document.getElementById(toggleId);
+  const targetEl = document.getElementById(targetId);
+  toggleEl.addEventListener('click', () => {
+    const collapsed = targetEl.classList.toggle('collapsed');
+    toggleEl.setAttribute('aria-expanded', String(!collapsed));
+  });
+}
+setupMobileMenuToggle('topbar-toggle-button', 'top-bar');
+setupMobileMenuToggle('sidebar-toggle-button', 'sidebar');
+
 const helpModalOverlayEl = document.getElementById('help-modal-overlay');
 document.getElementById('help-button').addEventListener('click', () => {
   helpModalOverlayEl.classList.remove('hidden');
