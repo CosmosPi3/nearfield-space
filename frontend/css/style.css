@@ -1151,6 +1151,12 @@ html, body {
      width; min-width:0 lets a flex item shrink below its content's
      natural width, which the fixed-width .range-slider-value box (11ch)
      would otherwise prevent. */
-  .range-slider-field { order: 5; flex: 1 1 0; min-width: 0; }
+  /* align-items:stretch (overriding the base flex-start) so the wrapper
+     div .range-slider is nested inside (.bpm-filter-slider etc.) actually
+     gets a definite width to stretch to — without this, that wrapper
+     shrink-to-fits its content under flex-start, which .range-slider's
+     own width:100% then has nothing definite to resolve against and
+     collapses to near the thumbs' own intrinsic width instead. */
+  .range-slider-field { order: 5; flex: 1 1 0; min-width: 0; align-items: stretch; }
   .range-slider-field .range-slider { width: 100%; }
 }
