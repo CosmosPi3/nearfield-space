@@ -1100,6 +1100,15 @@ html, body {
 
   #settings-sheet label { min-width: 45%; }
 
+  /* Visual reorder only (DOM/desktop order untouched) so Min/Max link
+     distance land on the same wrapped row as each other instead of
+     being split across rows by Gravity sitting between them. */
+  #settings-sheet label:has(#edge-threshold-input) { order: 1; }
+  #settings-sheet label:has(#gravity-input) { order: 2; }
+  #settings-sheet label:has(#link-distance-min-input) { order: 3; }
+  #settings-sheet label:has(#link-distance-max-input) { order: 4; }
+  #settings-sheet label:has(#charge-input) { order: 5; }
+
   /* Only meaningful as a vertical rule between two side-by-side groups. */
   .sheet-divider { display: none; }
 
@@ -1114,8 +1123,6 @@ html, body {
      inputs — so this exclusively targets Min similarity. width:100%
      lets it stretch across whatever the label's flex:1 below gives it. */
   .library-graph-controls input[type="range"] { width: 100%; }
-
-  .range-slider { --range-slider-width: 110px; }
 
   /* Row 1: status + divider + Min similarity, which flex-grows to fill
      the rest of the row (its input stretches with it via width:100%
@@ -1139,5 +1146,11 @@ html, body {
     margin: 2px 0 4px;
     background: var(--border);
   }
-  .range-slider-field { order: 5; }
+  /* flex:1 (equal grow, basis 0) splits row 2's full width evenly across
+     BPM/Views/Energy instead of each sizing to a fixed --range-slider-
+     width; min-width:0 lets a flex item shrink below its content's
+     natural width, which the fixed-width .range-slider-value box (11ch)
+     would otherwise prevent. */
+  .range-slider-field { order: 5; flex: 1 1 0; min-width: 0; }
+  .range-slider-field .range-slider { width: 100%; }
 }
