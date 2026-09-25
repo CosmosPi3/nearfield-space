@@ -403,6 +403,8 @@ function showWorkspaceTab() {
   // Otherwise a node selected in the Library tab stays open, floating over
   // the Discovery sidebar until manually closed.
   libraryNodePopup.close();
+
+  graphView.resize(); // container may have resized while it was display:none (mirrors showLibraryTab()'s own resize() call below)
 }
 
 async function showLibraryTab() {
