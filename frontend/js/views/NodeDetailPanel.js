@@ -37,6 +37,11 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
 
   function open(node) {
     currentNodeId = node.id;
+    // Every open() starts at the mobile peek preview, never mid-expanded —
+    // even if a different node was left expanded, e.g. via a relation-item
+    // click while browsing full details. Harmless on desktop, where
+    // .expanded has no CSS effect.
+    panelEl.classList.remove('expanded');
     panelEl.classList.remove('hidden');
     renderPanel(node.id);
     onSelectionChange?.(node.id);
@@ -111,6 +116,7 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
       </div>
       ${videoHtml}
       ${statsHtml}
+      <button class="popup-expand-toggle"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i>View full details</button>
       <button class="popup-discover" ${node.status !== 'ready' || discovering ? 'disabled' : ''}
         ${isManual ? 'title="Not in cosine.club\'s catalog — searches only tracks already analyzed in this app, not cosine.club\'s full catalog"' : ''}>
         <i class="popup-btn-icon fa-solid fa-compass" aria-hidden="true"></i>${discovering ? 'Discovering…' : 'Discover'}
@@ -132,6 +138,10 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
     }
 
     panelEl.querySelector('.popup-close').addEventListener('click', close);
+    // No-op on desktop — .expanded only has a CSS effect within the mobile
+    // media query. Button itself is hidden there via .expanded's own CSS,
+    // so there's no "collapse back to peek" path, only close().
+    panelEl.querySelector('.popup-expand-toggle').addEventListener('click', () => panelEl.classList.toggle('expanded'));
     panelEl.querySelector('.popup-view-in-library')?.addEventListener('click', () => onViewInLibrary?.(nodeId));
     panelEl.querySelector('.popup-pin').addEventListener('click', () => {
       if (node.kind === 'seed') {

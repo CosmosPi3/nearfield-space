@@ -1052,6 +1052,10 @@ html, body {
    needs collapsing. */
 .mobile-menu-toggle { display: none; }
 
+/* "View full details" — hidden on desktop, where the side panel always
+   shows everything at once; only mobile has a peek/expand distinction. */
+.popup-expand-toggle { display: none; }
+
 /* ---------------------------------------------------------------------
    Mobile (<=768px) — Tier 2: responsive layout, no new JS/state.
    #help-modal already scales via width:min(90vw,440px)/max-height:80vh
@@ -1231,5 +1235,68 @@ html, body {
     flex: 0 0 170px;
     gap: 6px;
     padding: 4px 6px;
+  }
+
+  /* Node detail panels: peek bottom sheet by default (borrows
+     #settings-sheet's positioning convention) so the graph stays visible
+     behind it for browsing several nodes in a row; "View full details"
+     switches to a full-screen takeover for relations/Discover/etc.
+     Visibility itself is still driven by the existing .hidden class
+     (open()/close()) — .expanded only changes geometry and which
+     sections show, independent of that. */
+  #node-detail-panel, #library-node-panel {
+    top: auto;
+    left: 50%;
+    right: auto;
+    width: min(94vw, 480px);
+    max-height: 70vh;
+    border-left: none;
+    border-radius: var(--radius) var(--radius) 0 0;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
+    transform: translateX(-50%);
+  }
+
+  #node-detail-panel.expanded, #library-node-panel.expanded {
+    top: 0;
+    left: 0;
+    width: 100vw;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .popup-expand-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 8px;
+    background: none;
+    border: 1px solid var(--accent-dim);
+    border-radius: var(--radius);
+    color: var(--accent);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .popup-expand-toggle:hover { border-color: var(--accent); }
+
+  /* Peek mode hides everything below the stats chips — Discover/pin/
+     Add-to-workspace and every .popup-section (relations, Found via,
+     Search+delete) all only show once expanded. The toggle button itself
+     only makes sense in peek mode (there's no "collapse back to peek"
+     path, only close()). */
+  #node-detail-panel:not(.expanded) .popup-discover,
+  #node-detail-panel:not(.expanded) .popup-actions,
+  #node-detail-panel:not(.expanded) .popup-section,
+  #library-node-panel:not(.expanded) .popup-add-to-workspace,
+  #library-node-panel:not(.expanded) .popup-section {
+    display: none;
+  }
+  #node-detail-panel.expanded .popup-expand-toggle,
+  #library-node-panel.expanded .popup-expand-toggle {
+    display: none;
   }
 }
