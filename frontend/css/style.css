@@ -1057,8 +1057,10 @@ html, body {
      0 height via its own .hidden{display:none} when not on Discovery);
      row 3 is the graph/library layer, sized to fill the rest of the
      viewport since force-graph needs real dimensions to render into.
-     Superseded by the Tier 4 sidebar-drawer part; until then this is an
-     interim "sidebar stacks above the graph" layout. */
+     Sidebar itself stacks above the graph rather than a hide/show drawer —
+     Pinned Tracks/Most Similar became horizontal-scrolling card rows
+     below specifically so that's a small, always-visible strip rather
+     than a tall vertical list eating graph height. */
   #app {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto 1fr;
@@ -1159,4 +1161,27 @@ html, body {
      collapses to near the thumbs' own intrinsic width instead. */
   .range-slider-field { order: 5; flex: 1 1 0; min-width: 0; align-items: stretch; }
   .range-slider-field .range-slider { width: 100%; }
+
+  /* Pinned Tracks / Most Similar: horizontal-scrolling fixed-width card
+     rows instead of tall vertical lists — same <li> markup/JS as desktop,
+     just reflowed as a row. mask-image fades the trailing edge as a
+     static "there's more, swipe" hint; it doesn't track scroll position
+     (so it doesn't disappear once you've scrolled to the end), which is
+     an intentional simplification for now. */
+  #sidebar { padding: 10px; gap: 10px; }
+  .sidebar-card { padding: 8px; }
+
+  #seed-tracks-list, #top-similar-list {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    flex: 0 0 auto;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+  }
+
+  #seed-tracks-list li, #top-similar-list li {
+    flex: 0 0 170px;
+  }
 }
