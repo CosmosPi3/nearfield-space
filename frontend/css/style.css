@@ -1042,3 +1042,63 @@ html, body {
 }
 
 #help-modal-close:hover { color: var(--danger); }
+
+/* ---------------------------------------------------------------------
+   Mobile (<=768px) — Tier 2: responsive layout, no new JS/state.
+   #help-modal already scales via width:min(90vw,440px)/max-height:80vh
+   above and needs no override here.
+   --------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  /* #library-container hardcodes grid-row:2 above (needed so it can
+     overlay full-width on desktop) — giving every child an explicit
+     grid-column/grid-row here avoids relying on the auto-placement
+     algorithm to resolve #sidebar/#graph-container's position once the
+     grid is down to a single column. Row 2 is sidebar-only (collapses to
+     0 height via its own .hidden{display:none} when not on Discovery);
+     row 3 is the graph/library layer, sized to fill the rest of the
+     viewport since force-graph needs real dimensions to render into.
+     Superseded by the Tier 4 sidebar-drawer part; until then this is an
+     interim "sidebar stacks above the graph" layout. */
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
+  }
+
+  #sidebar { grid-column: 1; grid-row: 2; }
+  #graph-container { grid-column: 1; grid-row: 3; }
+  #library-container { grid-column: 1; grid-row: 3; }
+
+  #top-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  #search-panel { max-width: 100%; }
+
+  #settings-sheet-content {
+    flex-direction: column;
+    gap: 12px;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  #settings-sheet .settings-row {
+    flex-wrap: wrap;
+  }
+
+  #settings-sheet label { min-width: 45%; }
+
+  /* Only meaningful as a vertical rule between two side-by-side groups. */
+  .sheet-divider { display: none; }
+
+  .library-graph-controls {
+    column-gap: 16px;
+    row-gap: 10px;
+    padding: 8px 12px;
+  }
+
+  .library-graph-controls input[type="range"] { width: 120px; }
+
+  .range-slider { --range-slider-width: 120px; }
+}
