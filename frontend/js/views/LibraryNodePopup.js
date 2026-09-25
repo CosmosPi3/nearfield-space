@@ -107,7 +107,6 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddTo
     const neighborsHtml = neighborsSectionHtml(neighbors);
 
     panelEl.innerHTML = `
-      <button class="popup-close" title="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       <div class="popup-header-row">
         <div class="popup-header-text">
           <div class="popup-title">${escapeHtml(title)}</div>
@@ -118,9 +117,12 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddTo
           <span class="popup-viewcount-value">${viewCount != null ? viewCount.toLocaleString() : '–'}</span>
           <span class="popup-viewcount-label">views</span>
         </div>
+        <button class="popup-close" title="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
-      ${videoHtml}
-      ${statsHtml}
+      <div class="popup-media-row">
+        ${videoHtml}
+        ${statsHtml}
+      </div>
       <button class="popup-expand-toggle"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i>View full details</button>
       <button class="popup-add-to-workspace"><i class="popup-btn-icon fa-solid fa-plus" aria-hidden="true"></i>Add to workspace</button>
       ${neighborsHtml}

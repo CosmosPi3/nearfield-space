@@ -1250,10 +1250,53 @@ html, body {
     right: auto;
     width: min(94vw, 480px);
     max-height: 70vh;
+    /* Same as the side padding now that .popup-close moved into
+       .popup-header-row (see below) instead of floating above it —
+       the base 40px reservation was just empty space once nothing else
+       needed to clear the button's old top-8px/right-8px position. */
+    padding-top: 16px;
     border-left: none;
     border-radius: var(--radius) var(--radius) 0 0;
     box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
     transform: translateX(-50%);
+  }
+
+  /* .popup-close is now a DOM child of .popup-header-row (moved there in
+     NodeDetailPanel.js/LibraryNodePopup.js) so it can sit inline next to
+     the view count instead of floating in reserved space above
+     everything — position:static drops the base rule's absolute
+     top-8px/right-8px positioning in favor of participating in that
+     row's flex layout. */
+  #node-detail-panel .popup-close, #library-node-panel .popup-close {
+    position: static;
+    flex: 0 0 auto;
+    align-self: flex-start;
+    margin-left: 6px;
+  }
+
+  /* Video shrinks to a smaller square-ish box with the stats/hint text
+     as a column beside it, rather than a full-width 16:9 strip above a
+     separate full-width chips row — most tracks' thumbnails are already
+     square (album art), so 16:9 was mostly just black bars. */
+  .popup-media-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .popup-media-row > .popup-video {
+    flex: 0 0 40%;
+    width: 40%;
+    margin-bottom: 0;
+  }
+  .popup-media-row > .popup-chips {
+    flex-direction: column;
+  }
+  .popup-media-row > .popup-chips,
+  .popup-media-row > .hint {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-bottom: 0;
   }
 
   #node-detail-panel.expanded, #library-node-panel.expanded {

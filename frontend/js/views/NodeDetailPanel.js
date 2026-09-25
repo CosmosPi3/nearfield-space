@@ -105,7 +105,6 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
     const viewInLibraryHtml = node.status === 'ready' ? '<button class="popup-view-in-library"><i class="popup-btn-icon fa-solid fa-book" aria-hidden="true"></i>View in library</button>' : '';
 
     panelEl.innerHTML = `
-      <button class="popup-close" title="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       <div class="popup-header-row">
         <div class="popup-header-text">
           <div class="popup-title">${escapeHtml(node.title || node.label)}</div>
@@ -113,9 +112,12 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
           ${linksHtml}
         </div>
         ${viewCountHtml}
+        <button class="popup-close" title="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
-      ${videoHtml}
-      ${statsHtml}
+      <div class="popup-media-row">
+        ${videoHtml}
+        ${statsHtml}
+      </div>
       <button class="popup-expand-toggle"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i>View full details</button>
       <button class="popup-discover" ${node.status !== 'ready' || discovering ? 'disabled' : ''}
         ${isManual ? 'title="Not in cosine.club\'s catalog — searches only tracks already analyzed in this app, not cosine.club\'s full catalog"' : ''}>
