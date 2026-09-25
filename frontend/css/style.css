@@ -1056,6 +1056,11 @@ html, body {
    shows everything at once; only mobile has a peek/expand distinction. */
 .popup-expand-toggle { display: none; }
 
+/* Header-row quick-pin — hidden on desktop, where .popup-actions's own
+   Pin button is already always visible; only mobile's peek mode hides
+   that section, hence this shortcut. */
+.popup-header-pin { display: none; }
+
 /* ---------------------------------------------------------------------
    Mobile (<=768px) — Tier 2: responsive layout, no new JS/state.
    #help-modal already scales via width:min(90vw,440px)/max-height:80vh
@@ -1276,6 +1281,31 @@ html, body {
     margin-left: 8px;
   }
 
+  /* Header-row quick-pin, styled to match .popup-close's inline sizing —
+     no #id-qualification needed since (unlike .popup-close/.mini-player/
+     .popup-chips) nothing else already targets this brand-new class. */
+  .popup-header-pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    align-self: flex-start;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    background: none;
+    border: 1px solid var(--accent-dim);
+    border-radius: 50%;
+    color: var(--accent);
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .popup-header-pin.popup-header-pin-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #06131f;
+  }
+
   /* Video shrinks to a square, mostly-content-not-bars box (most tracks'
      thumbnails are already square album art, so the base 16:9 box was
      mostly black bars) and takes up most of the row's width, with the
@@ -1287,7 +1317,7 @@ html, body {
      width:100%/aspect-ratio:16/9. */
   .popup-media-row {
     display: flex;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 10px;
     margin-bottom: 10px;
   }
@@ -1295,19 +1325,48 @@ html, body {
   #library-node-panel .popup-media-row > .popup-video {
     flex: 0 0 62%;
     width: 62%;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 4 / 3;
     margin-bottom: 0;
   }
-  #node-detail-panel .popup-media-row > .popup-chips,
+  /* #library-node-panel has no .popup-media-side wrapper (no button needs
+     to fill leftover space there) — .popup-chips/.hint sit directly as
+     .popup-media-row's second child instead. */
   #library-node-panel .popup-media-row > .popup-chips {
     flex-direction: column;
   }
-  #node-detail-panel .popup-media-row > .popup-chips,
   #library-node-panel .popup-media-row > .popup-chips,
-  #node-detail-panel .popup-media-row > .hint,
   #library-node-panel .popup-media-row > .hint {
     flex: 1 1 auto;
     min-width: 0;
+    margin-bottom: 0;
+  }
+
+  /* #node-detail-panel only: wraps stats + Discover so Discover fills
+     whatever vertical space is left under the chips, aligned with the
+     video's (now taller, stretch-matched) height — Discover is the main
+     Discovery-tab action, so it stays visible in peek mode rather than
+     waiting behind "View full details" like the rest of the actions. */
+  .popup-media-side {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 8px;
+  }
+  #node-detail-panel .popup-media-side > .popup-chips {
+    flex: 0 0 auto;
+    flex-direction: column;
+    margin-bottom: 0;
+  }
+  #node-detail-panel .popup-media-side > .hint {
+    flex: 0 0 auto;
+    margin-bottom: 0;
+  }
+  #node-detail-panel .popup-media-side .popup-discover {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
     margin-bottom: 0;
   }
 
@@ -1338,12 +1397,12 @@ html, body {
   }
   .popup-expand-toggle:hover { border-color: var(--accent); }
 
-  /* Peek mode hides everything below the stats chips — Discover/pin/
-     Add-to-workspace and every .popup-section (relations, Found via,
-     Search+delete) all only show once expanded. The toggle button itself
+  /* Peek mode hides everything below the media row except Discover (now
+     living inside .popup-media-side, see above) — pin/view-in-library,
+     Add-to-workspace, and every .popup-section (relations, Found via,
+     Search+delete) only show once expanded. The toggle button itself
      only makes sense in peek mode (there's no "collapse back to peek"
      path, only close()). */
-  #node-detail-panel:not(.expanded) .popup-discover,
   #node-detail-panel:not(.expanded) .popup-actions,
   #node-detail-panel:not(.expanded) .popup-section,
   #library-node-panel:not(.expanded) .popup-add-to-workspace,
