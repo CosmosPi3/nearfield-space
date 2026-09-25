@@ -2,6 +2,7 @@ import { toDisplayScore } from './scoreDisplay.js';
 import {
   nodeSizeValue,
   nodeRadius,
+  nodeHitRadius,
   NODE_REL_SIZE,
   IMAGE_OVERFILL,
   getThumbnail,
@@ -16,6 +17,7 @@ import {
   endpointNode,
   linkTouchesNode,
 } from './graphRenderHelpers.js';
+import { isMobileViewport } from '../utils/viewport.js';
 
 const NODE_COLORS = {
   seed: '#5eb4ff',
@@ -85,6 +87,7 @@ export function createGraphView({
   let chargeMultiplier = initialChargeStrength;
   let selectedNodeId = null;
   let hoveredNodeId = null;
+  const isMobile = isMobileViewport();
 
   const graph = ForceGraph()(containerEl)
     .backgroundColor('#0b0d12')
@@ -141,7 +144,7 @@ export function createGraphView({
     .nodePointerAreaPaint((node, color, ctx) => {
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(node.x, node.y, nodeRadius(node), 0, 2 * Math.PI);
+      ctx.arc(node.x, node.y, nodeHitRadius(node, isMobile), 0, 2 * Math.PI);
       ctx.fill();
     })
     .linkColor((l) =>

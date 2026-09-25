@@ -2,6 +2,7 @@ import { toDisplayScore } from './scoreDisplay.js';
 import {
   nodeSizeValue,
   nodeRadius,
+  nodeHitRadius,
   NODE_REL_SIZE,
   IMAGE_OVERFILL,
   getThumbnail,
@@ -17,6 +18,7 @@ import {
 } from './graphRenderHelpers.js';
 import { createRangeSlider } from './RangeSlider.js';
 import { nodeMatchesFilters } from '../viewmodels/libraryFilters.js';
+import { isMobileViewport } from '../utils/viewport.js';
 
 const NODE_COLOR = '#5eb4ff';
 const NEUTRAL_LINK_COLOR = 'rgba(230,232,238,0.45)';
@@ -167,6 +169,7 @@ export function createLibraryGraphView({
   // matches, so a bridge from an in-range track out to an out-of-range one
   // (the whole point of browsing by filter) stays visible.
   let matchingIds = new Set();
+  const isMobile = isMobileViewport();
 
   function linkIsDimmed(l) {
     const a = endpointNode(l.source, nodeLookup);
@@ -278,7 +281,7 @@ export function createLibraryGraphView({
     .nodePointerAreaPaint((node, color, ctx) => {
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(node.x, node.y, nodeRadius(node), 0, 2 * Math.PI);
+      ctx.arc(node.x, node.y, nodeHitRadius(node, isMobile), 0, 2 * Math.PI);
       ctx.fill();
     })
     .linkColor((l) => {
