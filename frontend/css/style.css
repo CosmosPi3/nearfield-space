@@ -1281,10 +1281,13 @@ html, body {
     margin-left: 8px;
   }
 
-  /* Header-row quick-pin, styled to match .popup-close's inline sizing —
-     no #id-qualification needed since (unlike .popup-close/.mini-player/
-     .popup-chips) nothing else already targets this brand-new class. */
-  .popup-header-pin {
+  /* Header-row quick-pin, styled to match .popup-close's inline sizing.
+     #id-qualified — it's a <button>, so the generic catch-all
+     "#node-detail-panel button {flex:1;background:var(--accent-dim);
+     border-radius:var(--radius);...}" rule (1 ID + 1 type = higher
+     specificity than a bare class) would otherwise win, rendering it as
+     a wide rectangle rather than a small circular icon. */
+  #node-detail-panel .popup-header-pin {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1300,10 +1303,15 @@ html, body {
     font-size: 11px;
     cursor: pointer;
   }
-  .popup-header-pin.popup-header-pin-active {
+  #node-detail-panel .popup-header-pin.popup-header-pin-active {
     background: var(--accent);
     border-color: var(--accent);
     color: #06131f;
+  }
+  /* Redundant once expanded — .popup-actions's own Pin button is visible
+     there, same reasoning as .popup-expand-toggle hiding itself. */
+  #node-detail-panel.expanded .popup-header-pin {
+    display: none;
   }
 
   /* Video shrinks to a square, mostly-content-not-bars box (most tracks'
