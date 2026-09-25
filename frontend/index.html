@@ -43,12 +43,18 @@
 
     <aside id="sidebar">
       <section id="seed-tracks-panel" class="sidebar-card">
-        <h2>Pinned Tracks</h2>
+        <h2>
+          <button class="sidebar-card-toggle" aria-expanded="true" aria-controls="seed-tracks-list" title="Show/hide"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button>
+          Pinned Tracks
+        </h2>
         <ul id="seed-tracks-list"></ul>
       </section>
 
       <section id="top-similar-panel" class="sidebar-card">
-        <h2>Most similar to pinned</h2>
+        <h2>
+          <button class="sidebar-card-toggle" aria-expanded="true" aria-controls="top-similar-list" title="Show/hide"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button>
+          Most similar to pinned
+        </h2>
         <ul id="top-similar-list"></ul>
       </section>
     </aside>

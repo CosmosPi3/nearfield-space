@@ -162,11 +162,42 @@ html, body {
 }
 
 #sidebar h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-dim);
   margin: 0 0 8px;
+}
+
+/* Rotated (not swapped) to point right when collapsed — a single glyph
+   avoids relying on a second chevron-right icon actually existing in
+   whatever Font Awesome subset is loaded. */
+.sidebar-card-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 10px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.sidebar-card-toggle:hover { color: var(--accent); }
+.sidebar-card.collapsed .sidebar-card-toggle { transform: rotate(-90deg); }
+/* #id-qualified — #seed-tracks-list/#top-similar-list's own display:flex
+   rule (1 ID) would otherwise beat a plain ".sidebar-card.collapsed > ul"
+   (2 classes, no ID), leaving the list visible despite the arrow flipping. */
+.sidebar-card.collapsed > #seed-tracks-list,
+.sidebar-card.collapsed > #top-similar-list {
+  display: none;
 }
 
 /* Shared box treatment for Pinned Tracks and Most Similar To Pinned — same
@@ -204,7 +235,7 @@ html, body {
   background: var(--bg);
 }
 
-#seed-tracks-list .seed-text { flex: 1; overflow: hidden; }
+#seed-tracks-list .seed-text { flex: 1; min-width: 0; overflow: hidden; }
 #seed-tracks-list .seed-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #seed-tracks-list .seed-meta { color: var(--text-dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -482,7 +513,7 @@ html, body {
   background: var(--bg);
 }
 
-#top-similar-list .top-similar-text { overflow: hidden; }
+#top-similar-list .top-similar-text { flex: 1; min-width: 0; overflow: hidden; }
 #top-similar-list .top-similar-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #top-similar-list .top-similar-meta { color: var(--text-dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Matches .popup-relation-score-nearfield's convention elsewhere (the
@@ -1236,8 +1267,15 @@ html, body {
   #seed-tracks-list, #top-similar-list { scrollbar-width: none; }
   #seed-tracks-list::-webkit-scrollbar, #top-similar-list::-webkit-scrollbar { display: none; }
 
+  /* min-width:0 on the <li> itself (not just .seed-text/.top-similar-text
+     inside it) — a flex item's *own* automatic minimum size defaults to
+     its content's natural width regardless of flex-shrink:0, and the li
+     has no overflow property of its own to zero that out implicitly.
+     Without this, a long artist name could still widen the li past its
+     170px flex-basis even with the text wrapper correctly clipping. */
   #seed-tracks-list li, #top-similar-list li {
     flex: 0 0 170px;
+    min-width: 0;
     gap: 6px;
     padding: 4px 6px;
   }
@@ -1307,6 +1345,9 @@ html, body {
     width: 20px;
     height: 20px;
     padding: 0;
+    /* Extra room on top of the row's own 8px gap, specifically between
+       pin and close — the two are easy to mis-tap on mobile otherwise. */
+    margin-right: 10px;
     background: none;
     border: none;
     color: var(--text-dim);

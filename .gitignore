@@ -10,3 +10,4 @@ backend/data/tmp/
 .DS_Store
 cosine_api_key
 backend/cookies.txt
+DEPLOYMENT.md
