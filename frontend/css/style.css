@@ -1074,7 +1074,11 @@ html, body {
     padding: 10px 12px;
   }
 
-  #search-panel { max-width: 100%; }
+  /* flex-basis:100% forces this onto its own line within the wrapping
+     #top-bar row instead of getting squeezed into whatever space is left
+     over after the title/tabs/buttons — those wrap to their own line(s)
+     around it instead of sharing a line with it. */
+  #search-panel { max-width: 100%; flex: 1 0 100%; }
 
   #settings-sheet-content {
     flex-direction: column;
