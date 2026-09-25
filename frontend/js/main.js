@@ -269,6 +269,15 @@ const topbarToggleButtonEl = document.getElementById('topbar-toggle-button');
 topbarToggleButtonEl.addEventListener('click', () => {
   const collapsed = document.getElementById('top-bar').classList.toggle('collapsed');
   topbarToggleButtonEl.setAttribute('aria-expanded', String(!collapsed));
+  // Collapsing/expanding grows or shrinks #graph-container/#library-
+  // container's actual clientHeight (the "1fr" grid row gets more/less
+  // room), but that's a layout reflow, not a window resize — force-graph's
+  // <canvas> only ever matches its container's size when told to via
+  // resize(), which both views otherwise only call on an actual `resize`
+  // window event. Without this, the canvas stays the old (smaller) size
+  // and the container's now-larger background shows through underneath it.
+  graphView.resize();
+  libraryGraphView.resize();
 });
 
 const helpModalOverlayEl = document.getElementById('help-modal-overlay');
