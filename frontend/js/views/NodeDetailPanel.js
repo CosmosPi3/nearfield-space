@@ -27,16 +27,21 @@ function buildActionsRowHtml(node) {
 
 // A docked right-side panel rather than a floating tooltip — avoids needing
 // to track the node's on-screen position as the graph pans/zooms/simulates.
-export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputEl, depthInputEl, onSelectionChange, onItemHover, onViewInLibrary }) {
+export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputEl, depthInputEl, onSelectionChange, onItemHover, onViewInLibrary, onVideoEnded }) {
   let currentNodeId = null;
   let miniPlayer = null;
+  // Consumed by the very next renderPanel()'s miniPlayer construction only —
+  // see the `if (!miniPlayer)` branch below — then cleared, so a later
+  // reactive re-render (e.g. Discover polling) never replays it.
+  let pendingAutoplay = false;
 
   graphViewModel.subscribe(() => {
     if (currentNodeId) renderPanel(currentNodeId);
   });
 
-  function open(node) {
+  function open(node, { autoplay = false } = {}) {
     currentNodeId = node.id;
+    pendingAutoplay = autoplay;
     // Every open() starts at the mobile peek preview, never mid-expanded —
     // even if a different node was left expanded, e.g. via a relation-item
     // click while browsing full details. Harmless on desktop, where
@@ -44,7 +49,7 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
     panelEl.classList.remove('expanded');
     panelEl.classList.remove('hidden');
     renderPanel(node.id);
-    onSelectionChange?.(node.id);
+    onSelectionChange?.(node.id, { autoplay });
   }
 
   function close() {
@@ -140,7 +145,10 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
 
     const videoSlotEl = panelEl.querySelector('.popup-video-slot');
     if (videoSlotEl) {
-      if (!miniPlayer) miniPlayer = createMiniPlayer(videoId);
+      if (!miniPlayer) {
+        miniPlayer = createMiniPlayer(videoId, { autoplay: pendingAutoplay, onEnded: () => onVideoEnded?.(nodeId) });
+        pendingAutoplay = false;
+      }
       videoSlotEl.replaceWith(miniPlayer.element);
     }
 

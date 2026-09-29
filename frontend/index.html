@@ -14,7 +14,7 @@
 <body>
   <div id="app">
     <header id="top-bar">
-      <button id="topbar-toggle-button" class="mobile-menu-toggle" title="Show/hide search &amp; Reset Graph" aria-expanded="true" aria-controls="search-panel reset-graph-button">
+      <button id="topbar-toggle-button" class="mobile-menu-toggle" title="Show/hide search, Autoplay &amp; Reset Graph" aria-expanded="true" aria-controls="search-panel autoplay-toggle-button reset-graph-button">
         <i class="fa-solid fa-bars" aria-hidden="true"></i>
       </button>
       <h1>
@@ -37,6 +37,9 @@
         <input type="text" id="search-input" placeholder="Search, or paste a link…" autocomplete="off" />
         <ul id="search-results" class="dropdown hidden"></ul>
       </div>
+      <button id="autoplay-toggle-button" title="Autoplay: play the next closest track when a video finishes" aria-pressed="false">
+        <i class="fa-solid fa-forward" aria-hidden="true"></i>
+      </button>
       <button id="reset-graph-button" title="Clears your current exploration graph — cached distances/features are kept">Reset Graph</button>
       <button id="help-button" title="How to use Discovery &amp; Library" aria-haspopup="dialog" aria-controls="help-modal">?</button>
     </header>
@@ -61,7 +64,6 @@
 
     <main id="graph-container"></main>
     <main id="library-container" class="hidden"></main>
-    <div id="discover-progress-overlay" class="hidden"></div>
     <aside id="node-detail-panel" class="hidden"></aside>
     <aside id="library-node-panel" class="hidden"></aside>
 
@@ -105,6 +107,10 @@
         <section>
           <h3>Library</h3>
           <p>Switch to the Library tab to see every track you've added, laid out as one graph connected by similarity. Click a node to view it or add it back into your Discovery workspace.</p>
+        </section>
+        <section>
+          <h3>Autoplay</h3>
+          <p>Toggle the button beside Reset Graph to walk the graph automatically. When a track's video finishes, it hops to the closest track that hasn't played yet and keeps going. Manually opening a different node restarts the walk from there.</p>
         </section>
         <section>
           <h3>The Maths</h3>

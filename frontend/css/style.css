@@ -7,6 +7,11 @@
   --text-dim: #8b93a3;
   --accent: #5eb4ff;
   --accent-dim: #2c5c85;
+  --tertiary: #f2b134;
+  --tertiary-dark: #2e2007;
+  --accent-dark: #0f2230;
+  --success: #3ecf6e;
+  --success-dark: #0d2415;
   --danger: #e0616b;
   --radius: 3px; /* sleek/near-square look — applies to every rounded box in the app except true circles (border-radius: 50%) */
 }
@@ -54,13 +59,13 @@ html, body {
 
 #top-bar h1 .brand-primary { font-weight: 500; }
 #top-bar h1 .brand-accent { color: var(--accent); font-weight: 700; }
-#top-bar h1 .brand-dot { color: #f2b134; font-weight: 700; }
+#top-bar h1 .brand-dot { color: var(--tertiary); font-weight: 700; }
 #top-bar h1 .brand-icon { width: 28px; height: 28px; margin-right: 8px; vertical-align: middle; }
 
 #view-tabs { display: flex; gap: 4px; }
 
 .view-tab {
-  padding: 8px 14px;
+  padding: 6px 10px;
   background: var(--panel-alt);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -87,6 +92,77 @@ html, body {
 
 #reset-graph-button:hover { border-color: var(--danger); color: var(--danger); }
 #reset-graph-button.hidden { display: none; }
+
+#autoplay-toggle-button {
+  flex: 0 0 auto;
+  width: 33px;
+  height: 33px;
+  padding: 0;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+#autoplay-toggle-button:hover { border-color: var(--tertiary); color: var(--tertiary); }
+#autoplay-toggle-button.active {
+  background: var(--tertiary);
+  border-color: var(--tertiary);
+  color: #06131f;
+}
+
+/* Anchored below #top-bar rather than at the bottom of the screen — the
+   mobile node-detail-panel docks as a bottom sheet (see the max-width:768px
+   rule below), and a bottom-anchored toast stack would sit right on top of
+   it. Growing downward from a fixed `top` (not `bottom`) means each newly
+   appended toast lands below the previous ones instead of pushing the whole
+   stack upward. */
+/* width:max-content (not the auto/default) matters here — a fixed-position
+   box with only `left` set (no `right`) shrink-to-fits against just the
+   space from that left offset to the containing block's right edge, which
+   at left:50% is only *half* the viewport, well before translateX(-50%) ever
+   re-centers it visually. Without overriding that, longer toast text (e.g.
+   "Discovered: Artist – Title") was wrapping across 2-3 lines on mobile at
+   barely half the screen's actual available width. */
+#toast-container {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 1000;
+  pointer-events: none;
+  width: max-content;
+  max-width: min(92vw, 420px);
+}
+
+.toast {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 6px 10px;
+  font-size: 11px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast.visible { opacity: 1; transform: translateY(0); }
+
+/* Feature-scoped color treatments (see toast.js's `variant` option) — a very
+   dark tint of that feature's own accent color, so a toast reads as
+   belonging to autoplay/discovery at a glance rather than all looking like
+   the same generic gray pill. */
+.toast-autoplay { background: var(--tertiary-dark); border-color: var(--tertiary); }
+.toast-discovery { background: var(--accent-dark); border-color: var(--accent-dim); }
+.toast-success { background: var(--success-dark); border-color: var(--success); color: var(--success); }
 
 #help-button {
   flex: 0 0 auto;
@@ -402,67 +478,6 @@ html, body {
 
 #discover-button:hover { background: var(--accent); color: #06131f; }
 #discover-button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-#discover-progress-overlay {
-  position: absolute;
-  top: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 5;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 12px;
-  color: var(--text-dim);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-}
-
-#discover-progress-overlay.hidden { display: none; }
-
-.discover-progress-spinner {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: discover-spin 0.8s linear infinite;
-}
-
-@keyframes discover-spin { to { transform: rotate(360deg); } }
-
-.discover-progress-text { white-space: nowrap; }
-
-.discover-progress-bar {
-  width: 120px;
-  height: 4px;
-  flex-shrink: 0;
-  background: var(--panel-alt);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.discover-progress-fill {
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.2s ease;
-}
-
-#discover-progress-overlay.indeterminate .discover-progress-fill {
-  width: 30% !important;
-  animation: discover-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes discover-pulse {
-  0% { margin-left: 0%; }
-  50% { margin-left: 70%; }
-  100% { margin-left: 0%; }
-}
 
 #top-similar-panel {
   flex: 1 1 auto;
@@ -1137,7 +1152,8 @@ html, body {
   #help-button { order: 3; }
   #top-bar::after { content: ''; order: 4; flex-basis: 100%; }
   #search-panel { order: 5; max-width: 100%; }
-  #reset-graph-button { order: 6; }
+  #autoplay-toggle-button { order: 6; }
+  #reset-graph-button { order: 7; }
 
   /* #topbar-toggle-button's look, matching #help-button's circular sizing. */
   .mobile-menu-toggle {
@@ -1162,9 +1178,15 @@ html, body {
      (now pointless, still flex-basis:100%) line-break pseudo-element
      too avoids it leaving an empty second line behind. */
   #top-bar.collapsed > #search-panel,
+  #top-bar.collapsed > #autoplay-toggle-button,
   #top-bar.collapsed > #reset-graph-button { display: none; }
   #top-bar.collapsed::after { display: none; }
   #top-bar.collapsed { padding: 6px 10px; }
+
+  /* #top-bar wraps to two rows here (title/tabs/help, then search/autoplay/
+     reset) rather than desktop's single row, so the toast stack needs more
+     clearance to stay below it instead of overlapping the second row. */
+  #toast-container { top: 200px; }
 
   #settings-sheet-content {
     flex-direction: column;
