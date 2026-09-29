@@ -34,6 +34,7 @@ const SEARCH_ICON_CLASS = {
   Bandcamp: 'fa-brands fa-bandcamp',
   Spotify: 'fa-brands fa-spotify',
   SoundCloud: 'fa-brands fa-soundcloud',
+  'Apple Music': 'fa-brands fa-itunes-note',
 };
 
 // Best-effort search-by-title-and-artist, not a confirmed link — one icon per
@@ -42,6 +43,7 @@ const SEARCH_PLATFORMS = [
   { label: 'Bandcamp', url: (q) => `https://bandcamp.com/search?q=${q}` },
   { label: 'Spotify', url: (q) => `https://open.spotify.com/search/${q}` },
   { label: 'SoundCloud', url: (q) => `https://soundcloud.com/search?q=${q}` },
+  { label: 'Apple Music', url: (q) => `https://music.apple.com/search?term=${q}` },
 ];
 
 function searchIconHtml(label, href) {

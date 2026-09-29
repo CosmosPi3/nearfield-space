@@ -18,16 +18,21 @@ import * as api from '../services/api.js';
 // node); the stats chips need a fetch — every library track is already
 // fully analyzed (extraction_status='ok'), so /features returns the cached
 // record instantly.
-export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddToWorkspace, onSelectionChange }) {
+export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddToWorkspace, onSelectionChange, onVideoEnded }) {
   let currentNode = null;
   let detail = null;
   let loadError = null;
   let miniPlayer = null;
+  // Consumed by the very next render()'s miniPlayer construction only — see
+  // NodeDetailPanel.js's identical pattern — then cleared, so a later
+  // re-render (e.g. once loadDetail() resolves) never replays it.
+  let pendingAutoplay = false;
 
-  function open(node) {
+  function open(node, { autoplay = false } = {}) {
     currentNode = node;
     detail = null;
     loadError = null;
+    pendingAutoplay = autoplay;
     // Every open() starts at the mobile peek preview, never mid-expanded —
     // even if a different node was left expanded, e.g. via a "Similar
     // tracks" click while browsing full details. Harmless on desktop,
@@ -36,7 +41,7 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddTo
     panelEl.classList.remove('hidden');
     render();
     loadDetail(node.id);
-    onSelectionChange?.(node.id);
+    onSelectionChange?.(node.id, { autoplay });
   }
 
   async function loadDetail(id) {
@@ -131,7 +136,10 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddTo
 
     const videoSlotEl = panelEl.querySelector('.popup-video-slot');
     if (videoSlotEl) {
-      if (!miniPlayer) miniPlayer = createMiniPlayer(videoId);
+      if (!miniPlayer) {
+        miniPlayer = createMiniPlayer(videoId, { autoplay: pendingAutoplay, onEnded: () => onVideoEnded?.(node.id) });
+        pendingAutoplay = false;
+      }
       videoSlotEl.replaceWith(miniPlayer.element);
     }
 

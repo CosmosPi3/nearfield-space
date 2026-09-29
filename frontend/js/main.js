@@ -9,10 +9,12 @@ import { createGraphView } from './views/GraphView.js';
 import { createLibraryGraphView } from './views/LibraryGraphView.js';
 import { createLibraryNodePopup } from './views/LibraryNodePopup.js';
 import { createNodeDetailPanel } from './views/NodeDetailPanel.js';
-import { createDiscoverProgressView } from './views/DiscoverProgressView.js';
+import { setupDiscoveryToasts } from './views/discoveryToasts.js';
 import { createTopSimilarView } from './views/TopSimilarView.js';
 import { setupInfoTooltips } from './views/infoTooltip.js';
 import { fromNormalized, toNormalized } from './views/normalize.js';
+import { showToast } from './views/toast.js';
+import { endpointNode } from './views/graphRenderHelpers.js';
 
 // Reads a persisted number, falling back to `defaultValue` if unset/invalid —
 // shared by every slider in the settings sheet so each one only needs to
@@ -60,6 +62,31 @@ let graphView;
 let lastWorkspaceNodeId = null;
 let lastLibraryNodeId = null;
 
+// --- Autoplay: walk the graph, hopping to the closest still-unplayed track
+// each time the current video ends. `playedNodeIds` tracks the current
+// walk's visited set (never-repeat within one walk) and is shared across
+// both the Discovery and Library popups below — reset whenever the toggle
+// switches on, or whenever a node is opened manually rather than by
+// autoplay itself, since a manual click starts a fresh walk from there.
+const AUTOPLAY_STORAGE_KEY = 'nearfieldspace:autoplay';
+const autoplayToggleButtonEl = document.getElementById('autoplay-toggle-button');
+let autoplayEnabled = localStorage.getItem(AUTOPLAY_STORAGE_KEY) === 'true';
+let playedNodeIds = new Set();
+
+function updateAutoplayButtonUI() {
+  autoplayToggleButtonEl.classList.toggle('active', autoplayEnabled);
+  autoplayToggleButtonEl.setAttribute('aria-pressed', String(autoplayEnabled));
+}
+updateAutoplayButtonUI();
+
+autoplayToggleButtonEl.addEventListener('click', () => {
+  autoplayEnabled = !autoplayEnabled;
+  localStorage.setItem(AUTOPLAY_STORAGE_KEY, String(autoplayEnabled));
+  if (autoplayEnabled) playedNodeIds = new Set();
+  updateAutoplayButtonUI();
+  showToast(autoplayEnabled ? 'Autoplay enabled' : 'Autoplay disabled', { variant: 'autoplay' });
+});
+
 createSeedListView({
   listEl: document.getElementById('seed-tracks-list'),
   graphViewModel,
@@ -72,18 +99,37 @@ const nodeDetailPanel = createNodeDetailPanel({
   graphViewModel,
   branchingInputEl: document.getElementById('branching-input'),
   depthInputEl: document.getElementById('depth-input'),
-  onSelectionChange: (nodeId) => {
+  onSelectionChange: (nodeId, { autoplay = false } = {}) => {
     graphView.setSelectedNodeId(nodeId);
     if (nodeId != null) lastWorkspaceNodeId = nodeId;
+    // A manual open (not one autoplay drove itself) restarts the walk from
+    // here — otherwise a track played earlier in a previous hop stays
+    // excluded forever, even though it may be this node's actual closest
+    // neighbor now that we've navigated back to it.
+    if (nodeId != null && !autoplay) playedNodeIds = new Set();
   },
   onItemHover: (nodeId) => graphView.setHoveredNodeId(nodeId),
   onViewInLibrary: (nodeId) => viewInLibrary(nodeId),
+  onVideoEnded: (nodeId) => {
+    if (!autoplayEnabled) return;
+    playedNodeIds.add(nodeId);
+    const next = graphViewModel.graphState.neighborsOf(nodeId)
+      .map(({ otherId, similarity }) => ({ id: otherId, similarity, node: graphViewModel.graphState.nodes.get(otherId) }))
+      .filter(({ id, node }) => node?.status === 'ready' && !playedNodeIds.has(id))
+      .sort((a, b) => (b.similarity ?? -Infinity) - (a.similarity ?? -Infinity))[0];
+    if (!next) {
+      autoplayEnabled = false;
+      localStorage.setItem(AUTOPLAY_STORAGE_KEY, 'false');
+      updateAutoplayButtonUI();
+      showToast('Autoplay disabled — no more tracks to play', { variant: 'autoplay' });
+      return;
+    }
+    nodeDetailPanel.open(next.node, { autoplay: true });
+    graphView.centerOnNode(next.id);
+  },
 });
 
-createDiscoverProgressView({
-  el: document.getElementById('discover-progress-overlay'),
-  graphViewModel,
-});
+setupDiscoveryToasts({ graphViewModel });
 
 const branchingValueEl = document.getElementById('branching-value');
 document.getElementById('branching-input').addEventListener('input', (e) => {
@@ -170,12 +216,6 @@ graphView = createGraphView({
   initialGravity: fromNormalized(initialGravityNorm, ...GRAVITY_RANGE),
   initialChargeStrength: -fromNormalized(initialChargeNorm, ...CHARGE_RANGE),
 });
-
-// force-graph replaces #graph-container's own DOM on construction above, so
-// the overlay has to be appended after the fact rather than living inside it
-// in index.html — this way it's a real child, positioned relative to the
-// container instead of needing to reverse-engineer the grid's cell geometry.
-document.getElementById('graph-container').appendChild(document.getElementById('discover-progress-overlay'));
 
 edgeThresholdInputEl.addEventListener('input', (e) => {
   const value = parseFloat(e.target.value);
@@ -340,9 +380,42 @@ const libraryNodePopup = createLibraryNodePopup({
     nodeDetailPanel.open({ id: node.id });
     graphView.centerOnNode(node.id);
   },
-  onSelectionChange: (nodeId) => {
+  onSelectionChange: (nodeId, { autoplay = false } = {}) => {
     libraryGraphView.setSelectedNodeId(nodeId);
     if (nodeId != null) lastLibraryNodeId = nodeId;
+    if (nodeId != null && !autoplay) playedNodeIds = new Set();
+  },
+  onVideoEnded: (nodeId) => {
+    if (!autoplayEnabled) return;
+    playedNodeIds.add(nodeId);
+    // Library has no separate "graph state" model — its edges are just the
+    // currently-loaded {nodes, links} in the view model (only pairs above
+    // the Min similarity threshold are even present), so "closest" here
+    // means closest among those already-drawn edges, same idea as the
+    // workspace but scoped to whatever's actually rendered.
+    const { nodes: libNodes, links: libLinks } = libraryGraphViewModel.getState();
+    const nodeLookup = new Map(libNodes.map((n) => [n.id, n]));
+    const next = libLinks
+      .map((l) => {
+        const a = endpointNode(l.source, nodeLookup);
+        const b = endpointNode(l.target, nodeLookup);
+        if (!a || !b) return null;
+        if (a.id === nodeId) return { id: b.id, node: b, similarity: l.cosineScore };
+        if (b.id === nodeId) return { id: a.id, node: a, similarity: l.cosineScore };
+        return null;
+      })
+      .filter(Boolean)
+      .filter(({ id }) => !playedNodeIds.has(id))
+      .sort((x, y) => (y.similarity ?? -Infinity) - (x.similarity ?? -Infinity))[0];
+    if (!next) {
+      autoplayEnabled = false;
+      localStorage.setItem(AUTOPLAY_STORAGE_KEY, 'false');
+      updateAutoplayButtonUI();
+      showToast('Autoplay disabled — no more tracks to play', { variant: 'autoplay' });
+      return;
+    }
+    libraryNodePopup.open(next.node, { autoplay: true });
+    libraryGraphView.centerOnNode(next.id);
   },
 });
 

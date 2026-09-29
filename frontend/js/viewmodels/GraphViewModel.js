@@ -34,6 +34,20 @@ export function createGraphViewModel() {
     return () => libraryChangeListeners.delete(listener);
   }
 
+  // Separate from `store`/notify() for the same reason as onLibraryChange
+  // above — a UI that wants to announce each individual discovery (e.g. a
+  // toast per track) needs the node itself, which `progress` never carries
+  // (it's just running counts), and doesn't want to re-fire on every
+  // unrelated notify() in between.
+  const discoveryListeners = new Set();
+  function notifyNodeDiscovered(node) {
+    for (const listener of discoveryListeners) listener(node);
+  }
+  function onNodeDiscovered(listener) {
+    discoveryListeners.add(listener);
+    return () => discoveryListeners.delete(listener);
+  }
+
   function notify() {
     store.setState((s) => ({ version: s.version + 1 }));
   }
@@ -376,7 +390,9 @@ export function createGraphViewModel() {
                 // (drawn from the same "every analyzed track" pool) — this
                 // is always a cache hit, never a fresh yt-dlp run.
                 const result = await api.getFeatures(neighbor.id);
-                graphState.addNode(hydrateTrackNode({ ...result, kind: 'discovered', status: 'ready', viaId: nodeId }));
+                const node = hydrateTrackNode({ ...result, kind: 'discovered', status: 'ready', viaId: nodeId });
+                graphState.addNode(node);
+                notifyNodeDiscovered(node);
                 notify();
                 await persistAddNode({ id: neighbor.id, kind: 'discovered', viaId: nodeId, cosineScore: null });
                 graphState.addLink({ source: nodeId, target: neighbor.id, type: 'discovered-via', similarity: neighbor.cosineScore, cosineScore: null });
@@ -427,7 +443,9 @@ export function createGraphViewModel() {
           hopExtraLinks.push(...extrasForThisNode.map((c) => ({ id: c.id, viaId: nodeId, cosineScore: c.score ?? null })));
 
           await mapWithConcurrency(newOnes, FEATURE_FETCH_CONCURRENCY, async (candidate) => {
-            graphState.addNode(createTrackNode(candidate, { kind: 'discovered', viaId: nodeId }));
+            const node = createTrackNode(candidate, { kind: 'discovered', viaId: nodeId });
+            graphState.addNode(node);
+            notifyNodeDiscovered(node);
             notify();
             await persistAddNode({ id: candidate.id, kind: 'discovered', viaId: nodeId, cosineScore: candidate.score ?? null });
             try {
@@ -527,6 +545,7 @@ export function createGraphViewModel() {
     getState: store.getState,
     subscribe: store.subscribe,
     onLibraryChange,
+    onNodeDiscovered,
     hydrate,
     addTrack,
     addManualTrack,

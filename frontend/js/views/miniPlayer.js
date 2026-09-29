@@ -16,7 +16,7 @@ function clamp(value, min, max) {
 // across their own re-renders as needed — this module never destroys the
 // player just because its element was temporarily unmounted, only when
 // `destroy()` is called explicitly (track switched, or panel closed).
-export function createMiniPlayer(videoId) {
+export function createMiniPlayer(videoId, { autoplay = false, onEnded } = {}) {
   const element = document.createElement('div');
   element.className = 'popup-video mini-player';
   element.innerHTML = `
@@ -67,6 +67,7 @@ export function createMiniPlayer(videoId) {
     setPlayingIcon(isPlaying);
     if (isPlaying) startPolling();
     else stopPolling();
+    if (e.data === window.YT.PlayerState.ENDED) onEnded?.();
   }
 
   toggleEl.addEventListener('click', () => {
@@ -108,7 +109,7 @@ export function createMiniPlayer(videoId) {
   loadYouTubeIframeApi().then((YT) => {
     if (destroyed) return;
     player = new YT.Player(frameEl, {
-      playerVars: { controls: 0, modestbranding: 1, rel: 0, playsinline: 1, disablekb: 1 },
+      playerVars: { controls: 0, modestbranding: 1, rel: 0, playsinline: 1, disablekb: 1, autoplay: autoplay ? 1 : 0 },
       videoId,
       events: { onStateChange: handleStateChange },
     });

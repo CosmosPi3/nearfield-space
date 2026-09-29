@@ -75,6 +75,20 @@ export function createGraphState() {
       .map((l) => ({ childId: linkEndpointId(l.target), similarity: l.similarity, cosineScore: l.cosineScore ?? null }));
   }
 
+  // Direction-agnostic, every type — unlike parentsOf/childrenOf, which are
+  // meant for the directed 'discovered-via' relationship, a 'similar' edge
+  // has no parent/child, just two endpoints, so ranking "closest to id" needs
+  // every link touching it regardless of which side it landed on or how it
+  // was drawn.
+  function neighborsOf(id) {
+    return links
+      .filter((l) => linkEndpointId(l.source) === id || linkEndpointId(l.target) === id)
+      .map((l) => ({
+        otherId: linkEndpointId(l.source) === id ? linkEndpointId(l.target) : linkEndpointId(l.source),
+        similarity: l.similarity,
+      }));
+  }
+
   // Mutates in place (not a remove+re-add) so Force-Graph's already-resolved
   // source/target object references on this exact link object stay intact.
   function updateLinkSimilarity(idA, idB, type, similarity) {
@@ -97,5 +111,5 @@ export function createGraphState() {
     return { nodes: Array.from(nodes.values()), links: links.slice() };
   }
 
-  return { nodes, links, addNode, updateNode, removeNode, hasNode, addLink, hasLinkBetween, parentsOf, childrenOf, updateLinkSimilarity, removeLinksByType, clear, toForceGraphData };
+  return { nodes, links, addNode, updateNode, removeNode, hasNode, addLink, hasLinkBetween, parentsOf, childrenOf, neighborsOf, updateLinkSimilarity, removeLinksByType, clear, toForceGraphData };
 }
