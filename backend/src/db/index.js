@@ -6,6 +6,13 @@ const { DB_PATH } = require('../config');
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
+// Truncate any WAL backlog left over from a previous run (e.g. an unclean
+// shutdown) so it doesn't keep growing indefinitely, and relax fsync
+// durability one notch — still safe under WAL mode (a crash can lose the
+// last commit but never corrupts the db) and meaningfully cheaper per-write
+// on slower/cloud block storage than the default `FULL`.
+db.pragma('wal_checkpoint(TRUNCATE)');
+db.pragma('synchronous = NORMAL');
 // The schema's REFERENCES clauses are documentation only, not enforced —
 // workspace_nodes must be insertable before a matching tracks row necessarily
 // exists (a node is persisted the instant it's added client-side, well
@@ -143,8 +150,17 @@ function getTrackRecord(id) {
   return stmts.getById.get(id);
 }
 
+// Bumped whenever a track's vector/extraction_status could have changed —
+// lets distanceService memoize computeGlobalStandardizer() instead of
+// re-scanning+JSON.parse-ing every 'ok' track on every distance-related request.
+let standardizerVersion = 0;
+function getStandardizerVersion() {
+  return standardizerVersion;
+}
+
 function saveTrackRecord(record) {
   stmts.upsert.run(record);
+  standardizerVersion += 1;
 }
 
 function getWorkspaceRows(deviceId) {
@@ -210,6 +226,27 @@ function getCachedDistance(trackAId, trackBId) {
   return stmts.getDistance.get(trackAId, trackBId);
 }
 
+// Batched replacement for calling getCachedDistance once per candidate in a
+// loop — one query for every (id, otherId) pair instead of N. Returns a Map
+// keyed by otherId (canonical ordering is resolved internally, callers don't
+// need to think about it).
+function getCachedDistancesFor(id, otherIds) {
+  const result = new Map();
+  if (otherIds.length === 0) return result;
+  const placeholders = otherIds.map(() => '?').join(',');
+  const rows = db.prepare(`
+    SELECT track_a_id AS trackAId, track_b_id AS trackBId, cosine_score AS cosineScore
+    FROM distances
+    WHERE (track_a_id = ? AND track_b_id IN (${placeholders}))
+       OR (track_b_id = ? AND track_a_id IN (${placeholders}))
+  `).all(id, ...otherIds, id, ...otherIds);
+  for (const row of rows) {
+    const otherId = row.trackAId === id ? row.trackBId : row.trackAId;
+    result.set(otherId, row.cosineScore);
+  }
+  return result;
+}
+
 function saveDistance(record) {
   stmts.upsertDistance.run(record);
 }
@@ -220,6 +257,7 @@ function clearDistanceCache() {
 
 function updateTrackBpmFields(record) {
   stmts.updateTrackBpmFields.run(record);
+  standardizerVersion += 1;
 }
 
 function getOkTracksForBpmBackfill() {
@@ -240,8 +278,10 @@ module.exports = {
   getOkTrackVectors,
   getAllOkTracks,
   getCachedDistance,
+  getCachedDistancesFor,
   saveDistance,
   clearDistanceCache,
   updateTrackBpmFields,
   getOkTracksForBpmBackfill,
+  getStandardizerVersion,
 };

@@ -11,14 +11,25 @@ const DEFAULT_THRESHOLD = 0.85;
 // scale (see computeGlobalStandardizer's own scale note below).
 const MAX_BATCH_IDS = 2000;
 
-// Recomputed fresh per request rather than persisted — at realistic personal-
-// tool scale (hundreds-to-low-thousands of tracks) this is dominated by the
-// SQLite read + JSON.parse, comfortably sub-30ms. See plan doc for the math
-// on why staleness from this is deliberately accepted rather than tracked.
+// Memoized against db.getStandardizerVersion(), which bumps on every track
+// write — avoids re-scanning+JSON.parse-ing every 'ok' track's vector on
+// every distance-related request when nothing has actually changed since the
+// last call. Cheap CPU work at realistic personal-tool scale either way, but
+// it's pure overhead on a request path that also contends with a
+// single-vCPU host's extraction pipeline.
+let cachedStandardizer = null; // { version, standardizer, populationSize }
+
 function computeGlobalStandardizer() {
+  const version = db.getStandardizerVersion();
+  if (cachedStandardizer && cachedStandardizer.version === version) {
+    const { standardizer, populationSize } = cachedStandardizer;
+    return { standardizer, populationSize };
+  }
   const rows = db.getOkTrackVectors();
   const vectors = rows.map((r) => JSON.parse(r.vectorJson));
-  return { standardizer: computeStandardizer(vectors), populationSize: rows.length };
+  const standardizer = computeStandardizer(vectors);
+  cachedStandardizer = { version, standardizer, populationSize: rows.length };
+  return { standardizer, populationSize: rows.length };
 }
 
 function canonicalPair(idA, idB) {
@@ -146,16 +157,15 @@ function getNearestTracks(id, limit = DEFAULT_NEAREST_LIMIT) {
   const { standardizer, populationSize } = computeGlobalStandardizer();
   const anchorVec = vectorFor(anchor.vector_json, standardizer);
 
+  const otherRows = db.getOkTrackVectors().filter((row) => row.id !== id);
+  const cachedByOtherId = db.getCachedDistancesFor(id, otherRows.map((row) => row.id));
+
   const scored = [];
   const run = db.db.transaction(() => {
-    for (const row of db.getOkTrackVectors()) {
-      if (row.id === id) continue;
-      const [trackAId, trackBId] = canonicalPair(id, row.id);
-      let cosineScore;
-      const cached = db.getCachedDistance(trackAId, trackBId);
-      if (cached) {
-        cosineScore = cached.cosine_score;
-      } else {
+    for (const row of otherRows) {
+      let cosineScore = cachedByOtherId.get(row.id);
+      if (cosineScore === undefined) {
+        const [trackAId, trackBId] = canonicalPair(id, row.id);
         const vec = vectorFor(row.vectorJson, standardizer);
         cosineScore = cosineSimilarity(anchorVec, vec);
         db.saveDistance({ trackAId, trackBId, cosineScore, populationSize });

@@ -18,9 +18,15 @@ module.exports = {
   SAMPLE_RATE: 22050,
   FRAME_SIZE: 2048,
   HOP_SIZE: 1024,
-  SEGMENT_SECONDS: 45,
-  SEGMENT_COUNT: 2,
-  EXTRACTION_TIMEOUT_MS: 60000,
+  // Overridable per-deployment (e.g. dialed down on a weaker/single-vCPU
+  // host) without a code change — defaults match the original hardcoded values.
+  SEGMENT_SECONDS: parseInt(process.env.SEGMENT_SECONDS || '45', 10),
+  SEGMENT_COUNT: parseInt(process.env.SEGMENT_COUNT || '2', 10),
+  EXTRACTION_TIMEOUT_MS: parseInt(process.env.EXTRACTION_TIMEOUT_MS || '60000', 10),
+  // Caps how many yt-dlp/ffmpeg/Meyda extraction pipelines run concurrently
+  // server-side, independent of the frontend's own fetch concurrency — keeps
+  // a burst of cache-miss discoveries from thrashing a single-vCPU host.
+  EXTRACTION_CONCURRENCY: parseInt(process.env.EXTRACTION_CONCURRENCY || '2', 10),
   COSINE_REQUEST_TIMEOUT_MS: 15000,
 
   // Rekordbox-style BPM range folding target — see utils/bpmRange.js.

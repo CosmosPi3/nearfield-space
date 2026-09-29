@@ -48,19 +48,34 @@ function mapYtdlpError(err) {
   return new AppError('EXTRACTION_FAILED', `yt-dlp failed: ${msg.slice(0, 300)}`, { retryable: true, cause: err });
 }
 
+const RETRY_DELAY_MS = 1000;
+
+// One retry for transient failures only (network hiccups, YouTube's
+// datacenter-IP bot-check) — a permanent failure like VIDEO_UNAVAILABLE is
+// rethrown immediately rather than wasting a second attempt on it.
+async function withRetry(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    const mapped = mapYtdlpError(err);
+    if (!mapped.retryable) throw mapped;
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    try {
+      return await fn();
+    } catch (err2) {
+      throw mapYtdlpError(err2);
+    }
+  }
+}
+
 async function probeDurationAndViews(sourceUrl) {
   const url = assertValidSourceUrl(sourceUrl);
-  let stdout;
-  try {
-    ({ stdout } = await execFileAsync('yt-dlp', [
-      ...COOKIE_ARGS,
-      '--no-playlist', '--skip-download',
-      '--print', '%(duration)s|%(view_count)s',
-      url,
-    ], { timeout: EXTRACTION_TIMEOUT_MS }));
-  } catch (err) {
-    throw mapYtdlpError(err);
-  }
+  const { stdout } = await withRetry(() => execFileAsync('yt-dlp', [
+    ...COOKIE_ARGS,
+    '--no-playlist', '--skip-download',
+    '--print', '%(duration)s|%(view_count)s',
+    url,
+  ], { timeout: EXTRACTION_TIMEOUT_MS }));
 
   const [durationStr, viewCountStr] = stdout.trim().split('|');
   const duration = parseFloat(durationStr);
@@ -119,21 +134,17 @@ async function downloadSegmentAsWav(sourceUrl, start, end) {
   const outputTemplate = wavPath.replace(/\.wav$/, '.%(ext)s');
   const section = `*${start}-${end}`;
 
-  try {
-    // One yt-dlp call does section-cut + resample + mono + wav conversion together.
-    await execFileAsync('yt-dlp', [
-      ...COOKIE_ARGS,
-      '--no-playlist',
-      '--download-sections', section,
-      '-f', 'bestaudio/best',
-      '-x', '--audio-format', 'wav',
-      '--postprocessor-args', `ffmpeg:-ar ${SAMPLE_RATE} -ac 1`,
-      '-o', outputTemplate,
-      url,
-    ], { timeout: EXTRACTION_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 });
-  } catch (err) {
-    throw mapYtdlpError(err);
-  }
+  // One yt-dlp call does section-cut + resample + mono + wav conversion together.
+  await withRetry(() => execFileAsync('yt-dlp', [
+    ...COOKIE_ARGS,
+    '--no-playlist',
+    '--download-sections', section,
+    '-f', 'bestaudio/best',
+    '-x', '--audio-format', 'wav',
+    '--postprocessor-args', `ffmpeg:-ar ${SAMPLE_RATE} -ac 1`,
+    '-o', outputTemplate,
+    url,
+  ], { timeout: EXTRACTION_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 }));
 
   if (!fs.existsSync(wavPath)) {
     throw new AppError('EXTRACTION_FAILED', 'yt-dlp did not produce the expected wav file');

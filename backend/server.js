@@ -1,5 +1,6 @@
 const path = require('path');
 const express = require('express');
+const compression = require('compression');
 const cors = require('cors');
 const { PORT, ALLOWED_ORIGINS } = require('./src/config');
 const { errorMiddleware } = require('./src/utils/errors');
@@ -15,6 +16,7 @@ const graphRoutes = require('./src/routes/graph');
 sweepTempDir();
 
 const app = express();
+app.use(compression());
 app.use(express.json());
 app.use(cors({
   origin(origin, callback) {

@@ -1,14 +1,21 @@
+const Bottleneck = require('bottleneck');
 const cosineClient = require('./cosineClient');
 const { extractAudioSamples, probeMetadata } = require('./youtubeExtractor');
 const { extractTextureFeatures } = require('./featureExtractor');
 const { getTrackRecord, saveTrackRecord } = require('../db');
 const { AppError } = require('../utils/errors');
+const { EXTRACTION_CONCURRENCY } = require('../config');
 
 // Guards concurrent extraction of the same id — two sibling frontier branches
 // in one discovery hop can legitimately surface the same new candidate before
 // the client-side visited-set update propagates. Shared between cosine.club-
 // backed and manually-added tracks since both key off the same id space.
 const inFlight = new Map();
+
+// Caps simultaneous yt-dlp/ffmpeg/Meyda pipelines regardless of how many the
+// client fires at once — protects a single-vCPU host from a discovery hop
+// that surfaces several cache misses at the same time.
+const extractionLimiter = new Bottleneck({ maxConcurrent: EXTRACTION_CONCURRENCY });
 
 function recordToResponse(record) {
   return {
@@ -97,7 +104,7 @@ async function getFeatures(id, { refresh = false } = {}) {
 
   if (inFlight.has(id)) return inFlight.get(id);
 
-  const promise = runExtraction(id).finally(() => inFlight.delete(id));
+  const promise = extractionLimiter.schedule(() => runExtraction(id)).finally(() => inFlight.delete(id));
   inFlight.set(id, promise);
   return promise;
 }
@@ -153,7 +160,7 @@ async function addManualTrack(sourceUrl) {
 
   if (inFlight.has(id)) return inFlight.get(id);
 
-  const promise = runManualExtraction(id, sourceUrl).finally(() => inFlight.delete(id));
+  const promise = extractionLimiter.schedule(() => runManualExtraction(id, sourceUrl)).finally(() => inFlight.delete(id));
   inFlight.set(id, promise);
   return promise;
 }
