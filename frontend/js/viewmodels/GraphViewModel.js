@@ -343,12 +343,22 @@ export function createGraphViewModel() {
     if (!seedNode || seedNode.status !== 'ready') return;
     const isManualSeed = seedId.startsWith('manual:');
 
-    store.setState({ discovering: true, progress: { processed: 0, hop: 0, depth, estimatedTotal: 0 } });
+    store.setState({ discovering: true, progress: { processed: 0, hop: 0, depth, estimatedTotal: 0, extracting: [] } });
 
     const expandWidth = Math.max(1, Math.ceil(branching / 2));
     let frontier = [seedId];
     const visited = new Set(graphState.nodes.keys());
     let processedCount = 0;
+
+    // Labels the toast shows while a candidate's fetch is in flight — only
+    // meaningful for the cosine.club-backed branch below, where a candidate
+    // can be a genuine multi-second cache-miss extraction. The manual-seed
+    // branch's getFeatures calls are always cache hits by construction (see
+    // its own comment), so there's never a real wait worth labeling there.
+    const extractingLabels = new Map();
+    function syncExtracting() {
+      store.setState((s) => ({ progress: { ...s.progress, extracting: Array.from(extractingLabels.values()) } }));
+    }
 
     try {
       for (let hop = 1; hop <= depth; hop++) {
@@ -448,6 +458,10 @@ export function createGraphViewModel() {
             notifyNodeDiscovered(node);
             notify();
             await persistAddNode({ id: candidate.id, kind: 'discovered', viaId: nodeId, cosineScore: candidate.score ?? null });
+            extractingLabels.set(candidate.id, candidate.artist && candidate.track
+              ? `${candidate.artist} – ${candidate.track}`
+              : (candidate.name || candidate.id));
+            syncExtracting();
             try {
               const result = await api.getFeatures(candidate.id);
               applyFeatureResult(candidate.id, result);
@@ -455,8 +469,9 @@ export function createGraphViewModel() {
             } catch (err) {
               applyFeatureError(candidate.id, err);
             } finally {
+              extractingLabels.delete(candidate.id);
               processedCount += 1;
-              store.setState((s) => ({ progress: { ...s.progress, processed: processedCount } }));
+              store.setState((s) => ({ progress: { ...s.progress, processed: processedCount, extracting: Array.from(extractingLabels.values()) } }));
               notify();
             }
           });
