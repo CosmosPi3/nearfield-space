@@ -162,23 +162,22 @@ function decodeWav(wavPath) {
 }
 
 // Full pipeline: probe -> download each segment -> decode -> always delete the temp files.
-// Segments are downloaded sequentially (no concurrency cap exists for yt-dlp
-// calls elsewhere in this app, so keep resource usage predictable here too).
+// Segments are downloaded concurrently — each is an independent time-slice of
+// the same video (own temp file, no shared state), and each yt-dlp call is
+// mostly spent waiting on YouTube rather than burning CPU, so overlapping
+// them shrinks wall-clock without changing what gets downloaded or decoded.
+// (Bounded by SEGMENT_COUNT, capped at 2 — not a general concurrency free-for-all.)
 async function extractAudioSamples(sourceUrl) {
   const { duration, viewCount } = await probeDurationAndViews(sourceUrl);
   const ranges = computeSegments(duration);
 
-  const segments = [];
-  for (const { start, end } of ranges) {
-    const wavPath = await downloadSegmentAsWav(sourceUrl, start, end);
-    try {
-      segments.push(decodeWav(wavPath));
-    } finally {
-      fs.rmSync(wavPath, { force: true });
-    }
+  const wavPaths = await Promise.all(ranges.map(({ start, end }) => downloadSegmentAsWav(sourceUrl, start, end)));
+  try {
+    const segments = wavPaths.map(decodeWav);
+    return { segments, sampleRate: SAMPLE_RATE, duration, viewCount };
+  } finally {
+    for (const wavPath of wavPaths) fs.rmSync(wavPath, { force: true });
   }
-
-  return { segments, sampleRate: SAMPLE_RATE, duration, viewCount };
 }
 
 module.exports = { extractAudioSamples, probeMetadata };
