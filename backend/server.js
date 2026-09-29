@@ -21,6 +21,7 @@ app.use(cors({
     if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
     return callback(new Error('Not allowed by CORS'));
   },
+  allowedHeaders: ['Content-Type', 'X-Device-Id'],
 }));
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 app.use('/api', apiLimiter);

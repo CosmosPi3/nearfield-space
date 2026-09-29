@@ -260,6 +260,22 @@ document.getElementById('reset-graph-button').addEventListener('click', () => {
   graphViewModel.resetGraph();
 });
 
+// Pinned Tracks / Most Similar section collapse — one generic listener for
+// both .sidebar-card-toggle buttons, since they're otherwise identical.
+document.querySelectorAll('.sidebar-card-toggle').forEach((toggleEl) => {
+  toggleEl.addEventListener('click', () => {
+    const collapsed = toggleEl.closest('.sidebar-card').classList.toggle('collapsed');
+    toggleEl.setAttribute('aria-expanded', String(!collapsed));
+    // Collapsing/expanding changes #sidebar's own height (an "auto" grid
+    // row on mobile), which changes how much room #graph-container/
+    // #library-container's "1fr" row actually gets — same reflow-not-a-
+    // window-resize gap as the top-bar hamburger toggle below, so both
+    // graphs' canvases need an explicit resize() to catch up.
+    graphView.resize();
+    libraryGraphView.resize();
+  });
+});
+
 // Mobile-only hamburger toggle (the button itself is hidden via CSS on
 // desktop, so this listener is just unreachable there, not disabled) —
 // collapses #search-panel/#reset-graph-button, per style.css's
