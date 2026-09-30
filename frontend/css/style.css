@@ -13,6 +13,7 @@
   --success: #3ecf6e;
   --success-dark: #0d2415;
   --danger: #e0616b;
+  --danger-dark: #2b1417;
   --radius: 3px; /* sleek/near-square look — applies to every rounded box in the app except true circles (border-radius: 50%) */
 }
 
@@ -163,6 +164,7 @@ html, body {
 .toast-autoplay { background: var(--tertiary-dark); border-color: var(--tertiary); }
 .toast-discovery { background: var(--accent-dark); border-color: var(--accent-dim); }
 .toast-success { background: var(--success-dark); border-color: var(--success); color: var(--success); }
+.toast-error { background: var(--danger-dark); border-color: var(--danger); color: var(--danger); }
 
 #help-button {
   flex: 0 0 auto;

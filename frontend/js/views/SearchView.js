@@ -5,7 +5,7 @@ import { escapeHtml } from './domUtils.js';
 // gates both the input listener and rendering so an inactive instance never
 // steps on the other's dropdown while its query state sits idle in the
 // background.
-export function createSearchView({ inputEl, dropdownEl, searchViewModel, onSelect, onManualAdd }) {
+export function createSearchView({ inputEl, dropdownEl, searchViewModel, onSelect, onManualAdd, onDiscogsFallback }) {
   let active = true;
 
   inputEl.addEventListener('input', () => {
@@ -51,6 +51,18 @@ export function createSearchView({ inputEl, dropdownEl, searchViewModel, onSelec
         const li = document.createElement('li');
         li.className = 'dropdown-error';
         li.textContent = state.error;
+        dropdownEl.appendChild(li);
+      } else if (state.discogsFallbackQuery) {
+        dropdownEl.classList.remove('hidden');
+        const li = document.createElement('li');
+        li.className = 'dropdown-manual-add';
+        li.innerHTML = `<div class="track-title">+ No catalog match</div>` +
+          `<div class="track-artist">Search Discogs &amp; YouTube for "${escapeHtml(state.discogsFallbackQuery)}" (~10-20s)</div>`;
+        li.addEventListener('click', () => {
+          onDiscogsFallback(state.discogsFallbackQuery);
+          inputEl.value = '';
+          searchViewModel.clear();
+        });
         dropdownEl.appendChild(li);
       } else {
         dropdownEl.classList.add('hidden');

@@ -5,6 +5,11 @@ if (!COSINE_API_KEY) {
   throw new Error('COSINE_API_KEY is not set. Add it to backend/.env');
 }
 
+const DISCOGS_API_TOKEN = process.env.DISCOGS_API_TOKEN;
+if (!DISCOGS_API_TOKEN) {
+  throw new Error('DISCOGS_API_TOKEN is not set. Add it to backend/.env');
+}
+
 module.exports = {
   PORT: parseInt(process.env.PORT || '3000', 10),
   ALLOWED_ORIGINS: (process.env.ALLOWED_ORIGINS ||
@@ -13,6 +18,11 @@ module.exports = {
   COSINE_API_BASE: 'https://cosine.club/api/v1',
   COSINE_API_KEY,
   COSINE_RATE_LIMIT_PER_MIN: 120,
+  DISCOGS_API_BASE: 'https://api.discogs.com',
+  DISCOGS_API_TOKEN,
+  // Discogs' published authenticated rate limit is 60/min.
+  DISCOGS_RATE_LIMIT_PER_MIN: 60,
+  DISCOGS_REQUEST_TIMEOUT_MS: 15000,
   YOUTUBE_COOKIES_FILE: process.env.YOUTUBE_COOKIES_FILE || null,
 
   SAMPLE_RATE: 22050,
