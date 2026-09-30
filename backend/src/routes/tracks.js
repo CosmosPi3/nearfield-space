@@ -20,6 +20,19 @@ router.post('/manual', manualTrackLimiter, async (req, res, next) => {
   }
 });
 
+// For a plain-text search that missed cosine.club's catalog — finds a
+// release on Discogs, resolves it to a YouTube video, and extracts directly.
+router.post('/discogs-fallback', manualTrackLimiter, async (req, res, next) => {
+  try {
+    const query = (req.body?.query || '').trim();
+    if (!query) throw new AppError('BAD_REQUEST', 'Body field "query" is required');
+    const result = await featuresService.addTrackViaDiscogsFallback(query);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/:id', async (req, res, next) => {
   try {
     const track = await cosineClient.getTrack(req.params.id);

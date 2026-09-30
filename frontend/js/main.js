@@ -50,6 +50,20 @@ const searchView = createSearchView({
     graphViewModel.addManualTrack(url);
     nodeDetailPanel.open({ id: `manual:${url}` });
   },
+  // Keeps the toast entirely at this composition layer — GraphViewModel
+  // itself stays toast-agnostic, same separation discoveryToasts.js keeps
+  // for the discovery flow.
+  onDiscogsFallback: async (query) => {
+    const toast = showToast(`Searching Discogs & YouTube for "${query}"…`, { duration: null, variant: 'discovery' });
+    try {
+      const track = await graphViewModel.addTrackFromDiscogsFallback(query);
+      toast.dismiss();
+      nodeDetailPanel.open(track);
+    } catch (err) {
+      toast.dismiss();
+      showToast(err.message || `No match found for "${query}"`, { variant: 'error' });
+    }
+  },
 });
 
 // Assigned once createGraphView runs below — these callbacks are only ever

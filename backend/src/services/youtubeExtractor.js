@@ -105,6 +105,25 @@ async function probeMetadata(sourceUrl) {
   return { title: title || null, uploader: uploader || null };
 }
 
+// Resolves a free-text query to a YouTube video id via yt-dlp's search
+// pseudo-URL (`ytsearch1:`) — not a real URL, so this bypasses
+// assertValidSourceUrl entirely rather than going through it.
+async function searchTopResult(query) {
+  let stdout;
+  try {
+    ({ stdout } = await execFileAsync('yt-dlp', [
+      ...COOKIE_ARGS,
+      '--no-playlist', '--skip-download',
+      '--print', '%(id)s',
+      `ytsearch1:${query}`,
+    ], { timeout: EXTRACTION_TIMEOUT_MS }));
+  } catch {
+    return null;
+  }
+  const videoId = stdout.trim();
+  return videoId || null;
+}
+
 // Two segments centered at the quarter and three-quarter points, for better
 // structural coverage (verse vs. chorus, etc.) than one continuous window.
 // Falls back to a single centered window when the track is too short to fit
@@ -180,4 +199,4 @@ async function extractAudioSamples(sourceUrl) {
   }
 }
 
-module.exports = { extractAudioSamples, probeMetadata };
+module.exports = { extractAudioSamples, probeMetadata, searchTopResult };

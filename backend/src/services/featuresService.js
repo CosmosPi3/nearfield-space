@@ -1,6 +1,7 @@
 const Bottleneck = require('bottleneck');
 const cosineClient = require('./cosineClient');
-const { extractAudioSamples, probeMetadata } = require('./youtubeExtractor');
+const discogsClient = require('./discogsClient');
+const { extractAudioSamples, probeMetadata, searchTopResult } = require('./youtubeExtractor');
 const { extractTextureFeatures } = require('./featureExtractor');
 const { getTrackRecord, saveTrackRecord } = require('../db');
 const { AppError } = require('../utils/errors');
@@ -165,4 +166,42 @@ async function addManualTrack(sourceUrl) {
   return promise;
 }
 
-module.exports = { getFeatures, addManualTrack };
+// For a plain-text search that missed cosine.club's catalog entirely — finds
+// a release on Discogs (broader/fresher than cosine.club's own curated
+// index), resolves that release's artist/track to a YouTube video, then
+// extracts from it exactly like a manually-pasted YouTube link would.
+// Metadata comes from Discogs (clean "Artist - Track"), not probeMetadata,
+// since a YouTube video title/uploader is much noisier.
+async function addTrackViaDiscogsFallback(query) {
+  const release = await discogsClient.searchTopRelease(query);
+  if (!release) throw new AppError('NOT_FOUND', `No Discogs match for "${query}"`);
+
+  const { artist, track: trackTitle } = release;
+  const videoId = await searchTopResult([artist, trackTitle].filter(Boolean).join(' '));
+  if (!videoId) throw new AppError('NOT_FOUND', `Found "${artist} - ${trackTitle}" on Discogs but no matching YouTube video`);
+
+  const sourceUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const id = `manual:${sourceUrl}`;
+  const track = {
+    videoId,
+    name: [artist, trackTitle].filter(Boolean).join(' - ') || query,
+    artist,
+    track: trackTitle,
+    externalLink: sourceUrl,
+    source: 'Discogs',
+  };
+
+  // Same id scheme as addManualTrack — a Discogs-resolved video that's
+  // already cached (e.g. from a direct paste of the same link) is reused
+  // rather than re-extracted.
+  const existing = getTrackRecord(id);
+  if (existing && existing.extraction_status === 'ok') return recordToResponse(existing);
+
+  if (inFlight.has(id)) return inFlight.get(id);
+
+  const promise = extractionLimiter.schedule(() => runPipelineAndSave(id, track, sourceUrl)).finally(() => inFlight.delete(id));
+  inFlight.set(id, promise);
+  return promise;
+}
+
+module.exports = { getFeatures, addManualTrack, addTrackViaDiscogsFallback };

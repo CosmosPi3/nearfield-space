@@ -46,21 +46,27 @@ async function resolveSpotifyQuery(url) {
 }
 
 export function createSearchViewModel() {
-  const store = createStore({ query: '', results: [], loading: false, error: null, manualAddUrl: null });
+  const store = createStore({
+    query: '', results: [], loading: false, error: null, manualAddUrl: null, discogsFallbackQuery: null,
+  });
   let debounceTimer = null;
 
   async function runTextSearch(query) {
-    store.setState({ loading: true, error: null, manualAddUrl: null });
+    store.setState({ loading: true, error: null, manualAddUrl: null, discogsFallbackQuery: null });
     try {
       const results = await api.search(query);
-      store.setState({ results, loading: false });
+      // Always offered, not just on a literal zero-result count — cosine.club's
+      // own search is loose/token-based and rarely returns truly zero results
+      // (e.g. "new song we don't know" matches every track literally titled
+      // "New Song"), so gating on an empty array missed most real misses.
+      store.setState({ results, loading: false, discogsFallbackQuery: query });
     } catch (err) {
       store.setState({ results: [], loading: false, error: err.message });
     }
   }
 
   async function runLinkLookup(input, platform) {
-    store.setState({ loading: true, error: null, manualAddUrl: null });
+    store.setState({ loading: true, error: null, manualAddUrl: null, discogsFallbackQuery: null });
     try {
       const results = platform === 'spotify'
         ? await api.search(await resolveSpotifyQuery(input))
@@ -82,7 +88,7 @@ export function createSearchViewModel() {
     store.setState({ query });
     const trimmed = query.trim();
     if (!trimmed) {
-      store.setState({ results: [], error: null, manualAddUrl: null });
+      store.setState({ results: [], error: null, manualAddUrl: null, discogsFallbackQuery: null });
       return;
     }
     const platform = detectPlatform(trimmed);
@@ -95,7 +101,7 @@ export function createSearchViewModel() {
 
   function clear() {
     clearTimeout(debounceTimer);
-    store.setState({ query: '', results: [], error: null, manualAddUrl: null });
+    store.setState({ query: '', results: [], error: null, manualAddUrl: null, discogsFallbackQuery: null });
   }
 
   return { getState: store.getState, subscribe: store.subscribe, setQuery, clear };

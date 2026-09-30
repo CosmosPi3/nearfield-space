@@ -207,6 +207,26 @@ export function createGraphViewModel() {
     return addOrPinManualTrack(url, 'discovered');
   }
 
+  // For a plain-text search that missed cosine.club's catalog entirely — the
+  // backend resolves it via Discogs + YouTube and returns an already-fully-
+  // extracted result in one round-trip, so unlike addOrPinManualTrack there's
+  // no placeholder node to add up front (a bare text query isn't a valid
+  // track identity until that resolution succeeds) and no separate
+  // loadFeaturesFor step needed afterward. A failure just propagates to the
+  // caller, which is expected to surface it (e.g. as a toast).
+  async function addTrackFromDiscogsFallback(query) {
+    const result = await api.discogsFallbackLookup(query);
+    if (!graphState.hasNode(result.id)) graphState.addNode(createTrackNode(result, { kind: 'discovered' }));
+    notify();
+    await persistAddNode({ id: result.id, kind: 'discovered' });
+    applyFeatureResult(result.id, result);
+    notify();
+    if (graphState.nodes.get(result.id)?.status === 'ready') notifyLibraryChange();
+    await refreshSimilarityEdges();
+    notify();
+    return graphState.nodes.get(result.id);
+  }
+
   // For tracks not in cosine.club's catalog — extracts directly from a
   // YouTube/Bandcamp/SoundCloud URL via our own pipeline, bypassing
   // cosine.club entirely. The resulting node has no cosine.club id, so it can
@@ -564,6 +584,7 @@ export function createGraphViewModel() {
     hydrate,
     addTrack,
     addManualTrack,
+    addTrackFromDiscogsFallback,
     pinTrack,
     pinManualTrack,
     unpinTrack,

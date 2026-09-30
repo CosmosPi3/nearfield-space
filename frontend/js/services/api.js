@@ -67,6 +67,18 @@ export async function addManualTrack(url) {
   return handle(res);
 }
 
+// For a plain-text search with zero cosine.club matches — finds a release on
+// Discogs, resolves it to a YouTube video, and extracts directly. Same
+// ~10-20s real-extraction cost as addManualTrack.
+export async function discogsFallbackLookup(query) {
+  const res = await fetch(`${BASE}/tracks/discogs-fallback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query }),
+  });
+  return handle(res);
+}
+
 export async function getWorkspace() {
   return workspaceFetch('');
 }

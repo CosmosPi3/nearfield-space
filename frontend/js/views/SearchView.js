@@ -5,7 +5,7 @@ import { escapeHtml } from './domUtils.js';
 // gates both the input listener and rendering so an inactive instance never
 // steps on the other's dropdown while its query state sits idle in the
 // background.
-export function createSearchView({ inputEl, dropdownEl, searchViewModel, onSelect, onManualAdd }) {
+export function createSearchView({ inputEl, dropdownEl, searchViewModel, onSelect, onManualAdd, onDiscogsFallback }) {
   let active = true;
 
   inputEl.addEventListener('input', () => {
@@ -45,18 +45,20 @@ export function createSearchView({ inputEl, dropdownEl, searchViewModel, onSelec
       return;
     }
 
-    if (!state.results.length) {
-      if (state.error) {
-        dropdownEl.classList.remove('hidden');
-        const li = document.createElement('li');
-        li.className = 'dropdown-error';
-        li.textContent = state.error;
-        dropdownEl.appendChild(li);
-      } else {
-        dropdownEl.classList.add('hidden');
-      }
+    if (state.error) {
+      dropdownEl.classList.remove('hidden');
+      const li = document.createElement('li');
+      li.className = 'dropdown-error';
+      li.textContent = state.error;
+      dropdownEl.appendChild(li);
       return;
     }
+
+    if (!state.results.length && !state.discogsFallbackQuery) {
+      dropdownEl.classList.add('hidden');
+      return;
+    }
+
     dropdownEl.classList.remove('hidden');
     for (const track of state.results) {
       const li = document.createElement('li');
@@ -64,6 +66,21 @@ export function createSearchView({ inputEl, dropdownEl, searchViewModel, onSelec
         `<div class="track-artist">${escapeHtml(track.artist || '')}</div>`;
       li.addEventListener('click', () => {
         onSelect(track);
+        inputEl.value = '';
+        searchViewModel.clear();
+      });
+      dropdownEl.appendChild(li);
+    }
+
+    // Always offered as the last row, not just when cosine.club's search
+    // comes up empty — see the comment in SearchViewModel.runTextSearch.
+    if (state.discogsFallbackQuery) {
+      const li = document.createElement('li');
+      li.className = 'dropdown-manual-add';
+      li.innerHTML = `<div class="track-title">+ Not what you're looking for?</div>` +
+        `<div class="track-artist">Search Discogs &amp; YouTube for "${escapeHtml(state.discogsFallbackQuery)}" (~10-20s)</div>`;
+      li.addEventListener('click', () => {
+        onDiscogsFallback(state.discogsFallbackQuery);
         inputEl.value = '';
         searchViewModel.clear();
       });
