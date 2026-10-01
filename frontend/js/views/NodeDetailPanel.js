@@ -27,7 +27,7 @@ function buildActionsRowHtml(node) {
 
 // A docked right-side panel rather than a floating tooltip — avoids needing
 // to track the node's on-screen position as the graph pans/zooms/simulates.
-export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputEl, depthInputEl, onSelectionChange, onItemHover, onViewInLibrary, onVideoEnded }) {
+export function createNodeDetailPanel({ panelEl, graphViewModel, favouritesViewModel, branchingInputEl, depthInputEl, onSelectionChange, onItemHover, onViewInLibrary, onVideoEnded }) {
   let currentNodeId = null;
   let miniPlayer = null;
   // Consumed by the very next renderPanel()'s miniPlayer construction only —
@@ -36,6 +36,11 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
   let pendingAutoplay = false;
 
   graphViewModel.subscribe(() => {
+    if (currentNodeId) renderPanel(currentNodeId);
+  });
+  // Keeps the heart in sync if the same track is (un)favourited from the
+  // Library popup while this panel is open.
+  favouritesViewModel.subscribe(() => {
     if (currentNodeId) renderPanel(currentNodeId);
   });
 
@@ -81,7 +86,7 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
         </div>`;
 
       statsHtml = statsChipsHtml(node);
-      relationsHtml = buildRelationsHtml(graphViewModel.graphState, node.id);
+      relationsHtml = buildRelationsHtml(graphViewModel.graphState, node.id, (id) => favouritesViewModel.isFavourited(id));
     } else {
       const msg = STATUS_MESSAGE[node.status] || `Extraction failed: ${escapeHtml(node.error || 'unknown error')}`;
       statsHtml = `<p class="hint">${msg}</p>`;
@@ -108,6 +113,7 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
     // successfully-analyzed ("ok") tracks, so there's nothing to view yet
     // for a pending/failed one.
     const viewInLibraryHtml = node.status === 'ready' ? '<button class="popup-view-in-library"><i class="popup-btn-icon fa-solid fa-book" aria-hidden="true"></i>View in library</button>' : '';
+    const favourited = favouritesViewModel.isFavourited(node.id);
 
     panelEl.innerHTML = `
       <div class="popup-header-row">
@@ -117,6 +123,9 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
           ${linksHtml}
         </div>
         ${viewCountHtml}
+        <button class="popup-header-favourite ${favourited ? 'popup-header-favourite-active' : ''}" title="${favourited ? 'Unfavourite' : 'Favourite'}">
+          <i class="fa-${favourited ? 'solid' : 'regular'} fa-heart" aria-hidden="true"></i>
+        </button>
         <button class="popup-header-pin ${node.kind === 'seed' ? 'popup-header-pin-active' : ''}" title="${node.kind === 'seed' ? 'Unpin' : 'Pin'}">
           <i class="fa-solid fa-thumbtack" aria-hidden="true"></i>
         </button>
@@ -134,8 +143,11 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
       </div>
       <button class="popup-expand-toggle"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i>View full details</button>
       <div class="popup-actions">
-        <button class="popup-pin ${node.kind === 'seed' ? 'popup-pin-active' : ''}">
-          <i class="popup-btn-icon fa-solid ${node.kind === 'seed' ? 'fa-thumbtack-slash' : 'fa-thumbtack'}" aria-hidden="true"></i>${node.kind === 'seed' ? 'Unpin' : 'Pin'}
+        <button class="popup-pin ${node.kind === 'seed' ? 'popup-pin-active' : ''}" title="${node.kind === 'seed' ? 'Unpin' : 'Pin'}">
+          <i class="fa-solid fa-thumbtack" aria-hidden="true"></i>
+        </button>
+        <button class="popup-favourite ${favourited ? 'popup-favourite-active' : ''}" title="${favourited ? 'Unfavourite' : 'Favourite'}">
+          <i class="fa-${favourited ? 'solid' : 'regular'} fa-heart" aria-hidden="true"></i>
         </button>
         ${viewInLibraryHtml}
       </div>
@@ -170,6 +182,9 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, branchingInputE
     // where .popup-actions's own Pin button is already always visible) —
     // lets a peek-mode user pin without expanding first.
     panelEl.querySelector('.popup-header-pin').addEventListener('click', togglePin);
+    const toggleFavourite = () => favouritesViewModel.toggleFavourite(nodeId);
+    panelEl.querySelector('.popup-favourite').addEventListener('click', toggleFavourite);
+    panelEl.querySelector('.popup-header-favourite').addEventListener('click', toggleFavourite);
     panelEl.querySelector('.popup-discover').addEventListener('click', () => {
       const branching = Math.max(2, parseInt(branchingInputEl.value, 10) || 5);
       const depth = Math.max(1, parseInt(depthInputEl.value, 10) || 1);

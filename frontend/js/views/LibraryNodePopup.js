@@ -18,7 +18,7 @@ import * as api from '../services/api.js';
 // node); the stats chips need a fetch — every library track is already
 // fully analyzed (extraction_status='ok'), so /features returns the cached
 // record instantly.
-export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddToWorkspace, onSelectionChange, onVideoEnded }) {
+export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, favouritesViewModel, onAddToWorkspace, onSelectionChange, onVideoEnded }) {
   let currentNode = null;
   let detail = null;
   let loadError = null;
@@ -27,6 +27,12 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddTo
   // NodeDetailPanel.js's identical pattern — then cleared, so a later
   // re-render (e.g. once loadDetail() resolves) never replays it.
   let pendingAutoplay = false;
+
+  // Keeps the heart in sync if the same track is (un)favourited from the
+  // Discovery popup while this panel is open.
+  favouritesViewModel.subscribe(() => {
+    if (currentNode) render();
+  });
 
   function open(node, { autoplay = false } = {}) {
     currentNode = node;
@@ -109,27 +115,41 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddTo
       })
       .filter(Boolean)
       .sort((x, y) => y.cosineScore - x.cosineScore);
-    const neighborsHtml = neighborsSectionHtml(neighbors);
+    const neighborsHtml = neighborsSectionHtml(neighbors, (id) => favouritesViewModel.isFavourited(id));
+    const favourited = favouritesViewModel.isFavourited(node.id);
 
     panelEl.innerHTML = `
       <div class="popup-header-row">
         <div class="popup-header-text">
           <div class="popup-title">${escapeHtml(title)}</div>
           <div class="popup-artist">${escapeHtml(node.artist || '')}</div>
-          ${linksHtml}
         </div>
         <div class="popup-viewcount">
           <span class="popup-viewcount-value">${viewCount != null ? viewCount.toLocaleString() : '–'}</span>
           <span class="popup-viewcount-label">views</span>
         </div>
+        <button class="popup-header-favourite ${favourited ? 'popup-header-favourite-active' : ''}" title="${favourited ? 'Unfavourite' : 'Favourite'}">
+          <i class="fa-${favourited ? 'solid' : 'regular'} fa-heart" aria-hidden="true"></i>
+        </button>
         <button class="popup-close" title="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
+      ${(linksHtml || node.discoveredByDisplayName) ? `
+        <div class="popup-link-row">
+          ${linksHtml}
+          ${node.discoveredByDisplayName ? `<span class="popup-discovered-by">Discovered by <span class="popup-discovered-by-name">${escapeHtml(node.discoveredByDisplayName)}</span></span>` : ''}
+        </div>
+      ` : ''}
       <div class="popup-media-row">
         ${videoHtml}
         ${statsHtml}
       </div>
       <button class="popup-expand-toggle"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i>View full details</button>
-      <button class="popup-add-to-workspace"><i class="popup-btn-icon fa-solid fa-plus" aria-hidden="true"></i>Add to workspace</button>
+      <div class="popup-actions">
+        <button class="popup-favourite ${favourited ? 'popup-favourite-active' : ''}" title="${favourited ? 'Unfavourite' : 'Favourite'}">
+          <i class="fa-${favourited ? 'solid' : 'regular'} fa-heart" aria-hidden="true"></i>
+        </button>
+        <button class="popup-add-to-workspace"><i class="popup-btn-icon fa-solid fa-plus" aria-hidden="true"></i>Add to workspace</button>
+      </div>
       ${neighborsHtml}
       ${searchHtml ? `<div class="popup-section"><div class="popup-section-title">Search</div><div class="popup-icon-row"><div class="popup-search-icons">${searchHtml}</div></div></div>` : ''}
     `;
@@ -151,6 +171,9 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, onAddTo
     panelEl.querySelector('.popup-add-to-workspace').addEventListener('click', () => {
       onAddToWorkspace?.(node);
     });
+    const toggleFavourite = () => favouritesViewModel.toggleFavourite(node.id);
+    panelEl.querySelector('.popup-favourite').addEventListener('click', toggleFavourite);
+    panelEl.querySelector('.popup-header-favourite').addEventListener('click', toggleFavourite);
     panelEl.querySelectorAll('.popup-relation-item').forEach((el) => {
       el.addEventListener('click', () => {
         const relNode = libraryGraphViewModel.getState().nodes.find((n) => n.id === el.dataset.nodeId);

@@ -1,10 +1,10 @@
 // Pure math — no DOM/API knowledge.
 
-export function mean(values) {
+function mean(values) {
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
-export function stdDev(values, m = mean(values)) {
+function stdDev(values, m = mean(values)) {
   const variance = values.reduce((a, b) => a + (b - m) ** 2, 0) / values.length;
   return Math.sqrt(variance);
 }

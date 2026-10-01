@@ -13,7 +13,20 @@ router.post('/manual', manualTrackLimiter, async (req, res, next) => {
   try {
     const url = (req.body?.url || '').trim();
     if (!url) throw new AppError('BAD_REQUEST', 'Body field "url" is required');
-    const result = await featuresService.addManualTrack(url);
+    const result = await featuresService.addManualTrack(url, req.userId);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// For a plain-text search that missed cosine.club's catalog — finds a
+// release on Discogs, resolves it to a YouTube video, and extracts directly.
+router.post('/discogs-fallback', manualTrackLimiter, async (req, res, next) => {
+  try {
+    const query = (req.body?.query || '').trim();
+    if (!query) throw new AppError('BAD_REQUEST', 'Body field "query" is required');
+    const result = await featuresService.addTrackViaDiscogsFallback(query, req.userId);
     res.json(result);
   } catch (err) {
     next(err);
@@ -60,7 +73,7 @@ router.get('/:id/similar', async (req, res, next) => {
 router.get('/:id/features', async (req, res, next) => {
   try {
     const refresh = req.query.refresh === '1';
-    const result = await featuresService.getFeatures(req.params.id, { refresh });
+    const result = await featuresService.getFeatures(req.params.id, { refresh }, req.userId);
     res.json(result);
   } catch (err) {
     next(err);

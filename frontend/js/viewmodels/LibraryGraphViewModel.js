@@ -67,6 +67,7 @@ export function createLibraryGraphViewModel() {
           viewCount: t.viewCount ?? null,
           tempoBpm: t.tempoBpm ?? null,
           energyValence: t.energyValence ?? null,
+          discoveredByDisplayName: t.discoveredByDisplayName ?? null,
         }));
 
         // viewsBounds always comes from this fresh, full node set.

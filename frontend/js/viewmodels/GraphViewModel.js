@@ -171,8 +171,8 @@ export function createGraphViewModel() {
     return addOrPinTrack(track, 'seed');
   }
 
-  // Shared by pinManualTrack/addManualTrack — see addOrPinTrack above for why
-  // this is parameterized rather than composed from pin+unpin.
+  // Parameterized like addOrPinTrack above; only addManualTrack uses it
+  // currently, but kept symmetric with addOrPinTrack's kind param.
   async function addOrPinManualTrack(url, kind) {
     const id = `manual:${url}`;
     const exists = graphState.hasNode(id);
@@ -225,15 +225,6 @@ export function createGraphViewModel() {
     await refreshSimilarityEdges();
     notify();
     return graphState.nodes.get(result.id);
-  }
-
-  // For tracks not in cosine.club's catalog — extracts directly from a
-  // YouTube/Bandcamp/SoundCloud URL via our own pipeline, bypassing
-  // cosine.club entirely. The resulting node has no cosine.club id, so it can
-  // never be a discoverFrom seed — but is otherwise a full citizen (real
-  // vector, real distances, eligible for "most similar to pinned").
-  function pinManualTrack(url) {
-    return addOrPinManualTrack(url, 'seed');
   }
 
   // "Unpin" demotes a seed back to a plain discovered node — it stays on the
@@ -586,7 +577,6 @@ export function createGraphViewModel() {
     addManualTrack,
     addTrackFromDiscogsFallback,
     pinTrack,
-    pinManualTrack,
     unpinTrack,
     removeNode,
     loadFeaturesFor,

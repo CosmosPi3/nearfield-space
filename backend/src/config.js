@@ -10,7 +10,13 @@ if (!DISCOGS_API_TOKEN) {
   throw new Error('DISCOGS_API_TOKEN is not set. Add it to backend/.env');
 }
 
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+if (!GOOGLE_CLIENT_ID) {
+  throw new Error('GOOGLE_CLIENT_ID is not set. Add it to backend/.env');
+}
+
 module.exports = {
+  GOOGLE_CLIENT_ID,
   PORT: parseInt(process.env.PORT || '3000', 10),
   ALLOWED_ORIGINS: (process.env.ALLOWED_ORIGINS ||
     'https://nearfield.space,https://www.nearfield.space,http://localhost:3000,http://127.0.0.1:3000'
