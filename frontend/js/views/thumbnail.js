@@ -1,6 +1,6 @@
 import { escapeHtml } from './domUtils.js';
 
-export function thumbnailUrl(videoId) {
+function thumbnailUrl(videoId) {
   return videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
 }
 

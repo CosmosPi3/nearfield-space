@@ -56,12 +56,19 @@ export function searchIconsHtml({ artist, title }) {
   return SEARCH_PLATFORMS.map((p) => searchIconHtml(p.label, p.url(q))).join('');
 }
 
+// Small red/pink heart shown next to a track's title wherever it appears in
+// a list, purely a status indicator (not clickable) — only rendered at all
+// when the track is favourited, per FavouritesViewModel.js.
+export function favouriteHeartHtml(favourited) {
+  return favourited ? '<i class="fa-solid fa-heart favourite-indicator" aria-hidden="true"></i>' : '';
+}
+
 // A compact version of the #top-similar-list row pattern (thumbnail + title +
 // one meta line), used for "Discovered via this track" (0-N entries). Both
 // `score` (ours) and `cosineScore` (cosine.club's) live on the edge itself,
 // not either node, since a node can have several parents/children each with
 // their own scores for that specific relationship.
-function relationItemHtml(relNode, score, cosineScore) {
+function relationItemHtml(relNode, score, cosineScore, favourited) {
   const nearfieldText = score != null ? `<span class="popup-relation-score-nearfield">nearfield ${toDisplayScore(score).toFixed(2)}</span>` : '';
   const cosineText = cosineScore != null ? `<span class="popup-relation-score-cosine">cosine.club ${cosineScore.toFixed(2)}</span>` : '';
   const scoresLine = (nearfieldText || cosineText)
@@ -71,7 +78,7 @@ function relationItemHtml(relNode, score, cosineScore) {
     <li class="popup-relation-item" data-node-id="${escapeHtml(relNode.id)}">
       ${thumbnailImgHtml(relNode.videoId, { fallbackClass: 'popup-relation-thumb-fallback' })}
       <div class="popup-relation-text">
-        <div class="popup-relation-title">${escapeHtml(relNode.title || relNode.label)}</div>
+        <div class="popup-relation-title">${escapeHtml(relNode.title || relNode.label)}${favouriteHeartHtml(favourited)}</div>
         <div class="popup-relation-meta">${escapeHtml(relNode.artist || '')}</div>
         ${scoresLine}
       </div>
@@ -83,13 +90,13 @@ function relationItemHtml(relNode, score, cosineScore) {
 // each can afford more room than the compact list rows above, and puts
 // cosine.club's score on its own line to make the ours-vs-cosine.club
 // comparison easier to spot at a glance.
-function foundViaCardHtml(relNode, score, cosineScore) {
+function foundViaCardHtml(relNode, score, cosineScore, favourited) {
   const scoreText = score != null ? ` · ${toDisplayScore(score).toFixed(2)}` : '';
   return `
     <div class="popup-found-via-card" data-node-id="${escapeHtml(relNode.id)}">
       ${thumbnailImgHtml(relNode.videoId, { imgClass: 'popup-found-via-thumb', fallbackClass: 'popup-found-via-thumb popup-relation-thumb-fallback' })}
       <div class="popup-found-via-text">
-        <div class="popup-found-via-title">${escapeHtml(relNode.title || relNode.label)}</div>
+        <div class="popup-found-via-title">${escapeHtml(relNode.title || relNode.label)}${favouriteHeartHtml(favourited)}</div>
         <div class="popup-found-via-meta">${escapeHtml(relNode.artist || '')}${scoreText}</div>
         ${cosineScore != null ? `<div class="popup-found-via-cosine">cosine.club ${cosineScore.toFixed(2)}</div>` : ''}
       </div>
@@ -111,7 +118,7 @@ function relationSectionHtml(title, itemsHtml, { scrollable = false } = {}) {
 // both by the workspace's own NodeDetailPanel and by the library graph's
 // popup, for any library track that also happens to already be a workspace
 // node (has been pinned/discovered at some point).
-export function relationsHtml(graphState, nodeId) {
+export function relationsHtml(graphState, nodeId, isFavourited) {
   // 0-N: a track can be surfaced by more than one independent discovery run
   // (from different pinned seeds), so this is a list, not a single lookup —
   // see GraphState.parentsOf.
@@ -119,7 +126,7 @@ export function relationsHtml(graphState, nodeId) {
     .map(({ parentId, similarity, cosineScore }) => ({ node: graphState.nodes.get(parentId), similarity, cosineScore }))
     .filter((p) => p.node)
     .sort((a, b) => (b.similarity ?? -Infinity) - (a.similarity ?? -Infinity));
-  const foundViaCardsHtml = parents.map(({ node: n, similarity, cosineScore }) => foundViaCardHtml(n, similarity, cosineScore)).join('');
+  const foundViaCardsHtml = parents.map(({ node: n, similarity, cosineScore }) => foundViaCardHtml(n, similarity, cosineScore, isFavourited(n.id))).join('');
   const foundViaHtml = foundViaCardsHtml
     ? `<div class="popup-section"><div class="popup-section-title">Found via</div>${foundViaCardsHtml}</div>`
     : '';
@@ -131,7 +138,7 @@ export function relationsHtml(graphState, nodeId) {
     .map(({ childId, similarity, cosineScore }) => ({ node: graphState.nodes.get(childId), score: similarity, cosineScore }))
     .filter((c) => c.node)
     .sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity));
-  const discoveredViaHtml = discoveredVia.map(({ node: n, score, cosineScore }) => relationItemHtml(n, score, cosineScore)).join('');
+  const discoveredViaHtml = discoveredVia.map(({ node: n, score, cosineScore }) => relationItemHtml(n, score, cosineScore, isFavourited(n.id))).join('');
 
   return foundViaHtml + relationSectionHtml('Discovered via this track', discoveredViaHtml, { scrollable: discoveredVia.length > 5 });
 }
@@ -145,14 +152,14 @@ export function relationsHtml(graphState, nodeId) {
 // directly (not the [0,1]-remapped toDisplayScore used elsewhere) since the
 // library's own "Min similarity" slider already operates in raw cosine
 // terms end-to-end.
-export function neighborsSectionHtml(neighbors) {
+export function neighborsSectionHtml(neighbors, isFavourited) {
   if (!neighbors.length) return '';
   const itemsHtml = neighbors.map(({ node, cosineScore }) => {
     return `
       <li class="popup-relation-item" data-node-id="${escapeHtml(node.id)}">
         ${thumbnailImgHtml(node.videoId, { fallbackClass: 'popup-relation-thumb-fallback' })}
         <div class="popup-relation-text">
-          <div class="popup-relation-title">${escapeHtml(node.track || node.name || 'Untitled')}</div>
+          <div class="popup-relation-title">${escapeHtml(node.track || node.name || 'Untitled')}${favouriteHeartHtml(isFavourited(node.id))}</div>
           <div class="popup-relation-meta">${escapeHtml(node.artist || '')} · ${cosineScore.toFixed(2)}</div>
         </div>
       </li>`;

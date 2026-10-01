@@ -7,6 +7,7 @@
   --text-dim: #8b93a3;
   --accent: #5eb4ff;
   --accent-dim: #2c5c85;
+  --accent-light: #8cc9ff;
   --tertiary: #f2b134;
   --tertiary-dark: #2e2007;
   --accent-dark: #0f2230;
@@ -14,6 +15,9 @@
   --success-dark: #0d2415;
   --danger: #e0616b;
   --danger-dark: #2b1417;
+  --favourite: #d6336c;
+  --favourite-dark: #2b0f1c;
+  --favourite-light: #e8709e;
   --radius: 3px; /* sleek/near-square look — applies to every rounded box in the app except true circles (border-radius: 50%) */
 }
 
@@ -119,7 +123,10 @@ html, body {
    rule below), and a bottom-anchored toast stack would sit right on top of
    it. Growing downward from a fixed `top` (not `bottom`) means each newly
    appended toast lands below the previous ones instead of pushing the whole
-   stack upward. */
+   stack upward. z-index is kept below the node/library popups (20) and
+   settings sheet (30) — see #node-detail-panel/#library-node-panel/
+   #settings-sheet's own z-index — even though position is back to a fixed
+   pixel offset. */
 /* width:max-content (not the auto/default) matters here — a fixed-position
    box with only `left` set (no `right`) shrink-to-fits against just the
    space from that left offset to the containing block's right edge, which
@@ -136,7 +143,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  z-index: 1000;
+  z-index: 18;
   pointer-events: none;
   width: max-content;
   max-width: min(92vw, 420px);
@@ -155,7 +162,10 @@ html, body {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.toast.visible { opacity: 1; transform: translateY(0); }
+/* Slightly see-through even at full "visible" opacity, so whatever's
+   underneath (graph, sidebar) stays faintly readable rather than being
+   fully hidden behind the toast. */
+.toast.visible { opacity: 0.9; transform: translateY(0); }
 
 /* Feature-scoped color treatments (see toast.js's `variant` option) — a very
    dark tint of that feature's own accent color, so a toast reads as
@@ -165,10 +175,14 @@ html, body {
 .toast-discovery { background: var(--accent-dark); border-color: var(--accent-dim); }
 .toast-success { background: var(--success-dark); border-color: var(--success); color: var(--success); }
 .toast-error { background: var(--danger-dark); border-color: var(--danger); color: var(--danger); }
+.toast-favourite { background: var(--favourite-dark); border-color: var(--favourite); color: var(--favourite); }
 
-#help-button {
+/* Shared circular-icon-button look — margin-left:auto lives on
+   #favourites-list-button alone since it's the first of the pair in DOM
+   order, pushing both it and #help-button (which follows immediately
+   after, with no auto margin of its own) together to the far right. */
+#favourites-list-button, #help-button {
   flex: 0 0 auto;
-  margin-left: auto;
   width: 33px;
   height: 33px;
   padding: 0;
@@ -180,8 +194,9 @@ html, body {
   font-size: 13px;
   font-weight: 600;
 }
+#favourites-list-button { margin-left: auto; }
 
-#help-button:hover { border-color: var(--accent-dim); color: var(--accent); }
+#favourites-list-button:hover, #help-button:hover { border-color: var(--accent-dim); color: var(--accent); }
 
 #search-input {
   width: 100%;
@@ -713,6 +728,16 @@ html, body {
 
 .hint { font-size: 12px; color: var(--text-dim); margin: 0 0 10px; }
 
+/* Status-only heart next to a track's title wherever it's listed (Pinned
+   Tracks, Most similar to pinned, Found via, Discovered via, Similar
+   tracks) — see trackDetailHelpers.js's favouriteHeartHtml. em-sized so it
+   scales with whichever title font-size it's dropped into, rather than
+   needing a per-list-context override. */
+/* vertical-align:middle, not the default baseline -- an icon glyph at a
+   smaller font-size sits noticeably low next to full-size text on its
+   baseline; middle centers it against the text's midline instead. */
+.favourite-indicator { color: var(--favourite); font-size: 0.65em; margin-left: 6px; vertical-align: middle; }
+
 #node-detail-panel {
   position: fixed;
   top: 0;
@@ -748,8 +773,7 @@ html, body {
 #library-node-panel.hidden { display: none; }
 
 #library-node-panel .popup-add-to-workspace {
-  width: 100%;
-  margin-bottom: 12px;
+  flex: 1;
   padding: 8px 12px;
   background: none;
   border: 1px solid var(--accent-dim);
@@ -761,19 +785,65 @@ html, body {
 
 #library-node-panel .popup-add-to-workspace:hover { border-color: var(--accent); }
 
+/* Icon-only square, fixed width rather than flex:1 -- it sits beside
+   .popup-add-to-workspace's text label, not sharing equal width with it.
+   Height comes from .popup-actions's default flex align-items:stretch,
+   matching whatever height .popup-add-to-workspace's own padding/font-size
+   ends up being, rather than a hardcoded value that could drift out of sync. */
+#library-node-panel .popup-favourite {
+  flex: 0 0 auto;
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 15px;
+}
+#library-node-panel .popup-favourite:hover { border-color: var(--accent); color: var(--accent); }
+#library-node-panel .popup-favourite-active { background: var(--favourite); border-color: var(--favourite); color: var(--text); }
+#library-node-panel .popup-favourite-active:hover { background: var(--danger); border-color: var(--danger); color: var(--text); }
+
 /* Discover is the most-used action in this panel — full width so it reads
    as the primary button, rather than sharing a row with Pin/View in library. */
 #node-detail-panel .popup-discover { width: 100%; margin-bottom: 6px; font-weight: 700; }
 
-/* Secondary/outlined look for the row below Discover, which is now the one
-   primary/filled action in this panel. .popup-pin-active (below) still wins
-   out over this when the track is actually pinned. */
-#node-detail-panel .popup-pin, #node-detail-panel .popup-view-in-library {
+/* Secondary/outlined look for View in library, the one text+icon button
+   left in this row — Pin/Favourite are icon-only squares, styled below.
+   .popup-pin-active (below) still wins out over this when the track is
+   actually pinned. */
+#node-detail-panel .popup-view-in-library {
   background: none;
   border: 1px solid var(--accent-dim);
   color: var(--accent);
 }
-#node-detail-panel .popup-pin:hover, #node-detail-panel .popup-view-in-library:hover { background: none; border-color: var(--accent); color: var(--accent); }
+#node-detail-panel .popup-view-in-library:hover { background: none; border-color: var(--accent); color: var(--accent); }
+
+/* Icon-only squares — fixed width instead of the generic
+   #node-detail-panel button rule's default flex:1, which otherwise
+   stretched all three buttons in this row evenly and forced "View in
+   library"'s text to wrap. Height comes from .popup-actions's default flex
+   align-items:stretch, matching View in library's own height. */
+#node-detail-panel .popup-pin, #node-detail-panel .popup-favourite {
+  flex: 0 0 auto;
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+/* Unselected Favourite is deliberately identical to unselected Pin — only
+   the active/filled state (pink vs. blue, see below) tells them apart. */
+#node-detail-panel .popup-pin, #node-detail-panel .popup-favourite {
+  background: none;
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+}
+#node-detail-panel .popup-pin:hover, #node-detail-panel .popup-favourite:hover { background: none; border-color: var(--accent); color: var(--accent); }
 
 #node-detail-panel .popup-header-row, #library-node-panel .popup-header-row {
   display: flex;
@@ -789,6 +859,39 @@ html, body {
 
 #node-detail-panel .popup-external-link, #library-node-panel .popup-external-link { display: block; margin-top: 2px; font-size: 10px; color: var(--accent); text-decoration: none; }
 #node-detail-panel .popup-external-link:hover, #library-node-panel .popup-external-link:hover { text-decoration: underline; }
+
+/* A sibling of .popup-header-row (not nested inside .popup-header-text),
+   so it spans the popup's *full* width rather than just the narrower title
+   column — margin-left:auto on .popup-discovered-by below only
+   right-justifies against whatever this element's own width is, which
+   needs to be the full width for "right-justified" to actually line up
+   with the view count/close button above. Houses the external link
+   (fixed-length "View on Discogs ↗" etc.) and the "Discovered by <name>"
+   credit on the same line; margin-left:auto pushes the credit to the right
+   edge regardless of whether a link precedes it. */
+#library-node-panel .popup-link-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  /* .popup-header-row (the sibling above) already has its own
+     margin-bottom: 8px — this negative margin pulls this row back up
+     closer to the artist line instead of stacking both gaps. */
+  margin-top: -5px;
+  margin-bottom: 6px;
+}
+/* Overrides the block-level default above — it's a flex item in the row
+   now, not its own line. */
+#library-node-panel .popup-link-row .popup-external-link { margin-top: 0; }
+#library-node-panel .popup-discovered-by {
+  margin-left: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+/* Subtle emphasis on just the name, not the "Discovered by" prefix — a
+   step up from --text-dim to --text, not a bold accent color. */
+#library-node-panel .popup-discovered-by-name { color: var(--text); font-weight: 500; }
 
 #node-detail-panel .popup-viewcount, #library-node-panel .popup-viewcount {
   flex: 0 0 25%;
@@ -1017,7 +1120,7 @@ html, body {
   line-height: 1;
 }
 
-#node-detail-panel .popup-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+#node-detail-panel .popup-actions, #library-node-panel .popup-actions { display: flex; gap: 8px; margin-bottom: 12px; }
 
 #node-detail-panel button {
   flex: 1;
@@ -1050,6 +1153,8 @@ html, body {
 
 #node-detail-panel button.popup-pin-active { background: var(--accent); color: #06131f; }
 #node-detail-panel button.popup-pin-active:hover { background: var(--danger); color: var(--text); }
+#node-detail-panel button.popup-favourite-active { background: var(--favourite); color: var(--text); }
+#node-detail-panel button.popup-favourite-active:hover { background: var(--danger); color: var(--text); }
 
 #node-detail-panel button.popup-delete:hover { background: var(--danger); color: var(--text); }
 
@@ -1095,6 +1200,284 @@ html, body {
 
 #help-modal-close:hover { color: var(--danger); }
 
+/* Same structure/sizing as #help-modal-overlay/#help-modal above, just
+   themed around the favourite pink instead of being a generic dialog. */
+#favourites-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+#favourites-modal-overlay.hidden { display: none; }
+
+#favourites-modal {
+  position: relative;
+  width: min(90vw, 440px);
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+#favourites-modal h2 { margin: 0 0 16px; font-size: 16px; }
+
+#favourites-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+#favourites-modal-close:hover { color: var(--danger); }
+
+#favourites-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.favourites-sort-label { font-size: 11px; color: var(--text-dim); margin-right: 2px; }
+
+.favourites-sort-button {
+  padding: 4px 10px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.favourites-sort-button:hover { border-color: var(--accent-dim); color: var(--accent); }
+.favourites-sort-button.active { background: var(--accent); border-color: var(--accent); color: #06131f; }
+.favourites-sort-button i { margin-left: 4px; font-size: 10px; }
+
+/* Same list-item recipe as #seed-tracks-list. */
+#favourites-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+/* Same neutral-grey card look as .popup-found-via-card (in the Discovery/
+   Library popups) rather than a blue-tinted one — a subtle border, only
+   hinting blue on hover. background is --panel-alt (not --panel, which
+   #favourites-modal itself already uses) so the cards read as mildly
+   raised above the modal instead of blending flat into it. */
+#favourites-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#favourites-list li:hover { border-color: var(--accent-dim); }
+
+#favourites-list img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+#favourites-list .favourite-text { flex: 1; min-width: 0; overflow: hidden; }
+#favourites-list .favourite-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#favourites-list .favourite-meta { color: var(--text-dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+#auth-gate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+#auth-gate-overlay.hidden { display: none; }
+
+#auth-gate-card {
+  width: min(90vw, 380px);
+  padding: 28px;
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+#auth-gate-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  font-size: 20px;
+  font-weight: 500;
+}
+#auth-gate-brand .brand-icon { width: 32px; height: 32px; margin-right: 4px; }
+#auth-gate-brand .brand-accent { color: var(--accent); font-weight: 700; }
+#auth-gate-brand .brand-dot { color: var(--tertiary); font-weight: 700; }
+
+#auth-gate-tagline { margin: 0 0 18px; font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+#auth-gate-button { display: flex; justify-content: center; }
+#auth-gate-status { margin-top: 12px; margin-bottom: 0; min-height: 16px; color: var(--accent); }
+
+/* Floats over whichever graph (Discovery or Library) is currently visible --
+   a fixed sibling of both containers, not scoped to either, so it stays put
+   across tab switches. z-index sits below #settings-sheet (30) and
+   #node-detail-panel/#library-node-panel (20) so those visually take
+   priority if they ever overlap it, rather than the chip covering them. */
+#account-chip {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(23, 27, 36, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  transition: right 0.2s ease;
+}
+
+#account-chip.hidden { display: none; }
+
+/* #node-detail-panel/#library-node-panel are a fixed 320px-wide right-side
+   panel on desktop (see their own rules) -- shifted left by that width +
+   this chip's own right offset so an open popup doesn't cover it. Reset
+   back to the base 16px inside the mobile media query below, since there
+   those panels become bottom sheets instead and never occupy this corner. */
+#account-chip.popup-open { right: 336px; }
+
+#account-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+#account-name { font-size: 12px; color: var(--text); }
+
+#account-edit-name-button, #account-logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+}
+#account-edit-name-button:hover { border-color: var(--accent-dim); color: var(--accent); }
+#account-logout-button:hover { border-color: var(--danger); color: var(--danger); }
+
+/* Anchored to #account-chip itself (position:fixed, so it's already a
+   containing block for an absolutely-positioned child) rather than the
+   viewport — bottom:100% + margin-bottom pops it just above the chip,
+   "coming out from above" as asked, following the chip around if it ever
+   shifts (e.g. .popup-open). */
+#edit-display-name-popover {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  width: 220px;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+#edit-display-name-popover.hidden { display: none; }
+#edit-display-name-title { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+#edit-display-name-input {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--panel-alt);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 13px;
+}
+#edit-display-name-input:focus { outline: none; border-color: var(--accent); }
+#edit-display-name-error { color: var(--danger); margin: 6px 0 0; }
+#edit-display-name-error.hidden { display: none; }
+#edit-display-name-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+#edit-display-name-actions button {
+  padding: 5px 10px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+}
+#edit-display-name-cancel:hover { border-color: var(--border); color: var(--text); }
+#edit-display-name-save { border-color: var(--accent-dim); color: var(--accent); }
+#edit-display-name-save:hover { border-color: var(--accent); }
+
+/* Same overlay/box recipe as #help-modal-overlay/#help-modal, just a
+   smaller confirm dialog rather than a scrollable content panel. */
+#logout-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+#logout-confirm-overlay.hidden { display: none; }
+#logout-confirm-modal {
+  width: min(90vw, 320px);
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+#logout-confirm-modal h2 { margin: 0 0 10px; font-size: 16px; }
+#logout-confirm-modal p { margin: 0; font-size: 13px; color: var(--text-dim); }
+#logout-confirm-actions { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
+#logout-confirm-actions button {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-alt);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+}
+#logout-confirm-cancel:hover { border-color: var(--accent-dim); color: var(--accent); }
+#logout-confirm-confirm { border-color: var(--danger); color: var(--danger); }
+#logout-confirm-confirm:hover { background: var(--danger); color: var(--text); }
+
 /* Collapses #top-bar/#sidebar down to just this button on mobile (see
    media query below) — hidden on desktop, where neither section ever
    needs collapsing. */
@@ -1108,6 +1491,10 @@ html, body {
    Pin button is already always visible; only mobile's peek mode hides
    that section, hence this shortcut. */
 .popup-header-pin { display: none; }
+
+/* Same reasoning as .popup-header-pin above -- .popup-actions's own
+   Favourite button is already always visible on desktop. */
+.popup-header-favourite { display: none; }
 
 /* ---------------------------------------------------------------------
    Mobile (<=768px) — Tier 2: responsive layout, no new JS/state.
@@ -1136,9 +1523,20 @@ html, body {
   #graph-container { grid-column: 1; grid-row: 3; }
   #library-container { grid-column: 1; grid-row: 3; }
 
+  /* Node popups become bottom sheets on mobile (see their own rules further
+     down), not a right-side panel, so there's never a reason to shift this
+     chip out of the way here -- it always stays put in the bottom-right
+     corner regardless of .popup-open. */
+  #account-chip.popup-open { right: 16px; }
+
   #top-bar {
     flex-wrap: wrap;
-    gap: 10px;
+    /* Split rather than the shorthand `gap` — column-gap keeps the same
+       horizontal spacing within each wrapped line (title/tabs/help, and
+       search/autoplay/reset), while row-gap alone controls the vertical
+       gap between those two lines, which was needlessly tall at 10px. */
+    column-gap: 10px;
+    row-gap: 4px;
     padding: 10px 12px;
   }
 
@@ -1151,11 +1549,12 @@ html, body {
   #topbar-toggle-button { order: 0; }
   #top-bar h1 { order: 1; }
   #view-tabs { order: 2; }
-  #help-button { order: 3; }
-  #top-bar::after { content: ''; order: 4; flex-basis: 100%; }
-  #search-panel { order: 5; max-width: 100%; }
-  #autoplay-toggle-button { order: 6; }
-  #reset-graph-button { order: 7; }
+  #favourites-list-button { order: 3; }
+  #help-button { order: 4; }
+  #top-bar::after { content: ''; order: 5; flex-basis: 100%; }
+  #search-panel { order: 6; max-width: 100%; }
+  #autoplay-toggle-button { order: 7; }
+  #reset-graph-button { order: 8; }
 
   /* #topbar-toggle-button's look, matching #help-button's circular sizing —
      shrunk from desktop's 33px, along with the logo/title just below, so
@@ -1180,6 +1579,15 @@ html, body {
   }
   .mobile-menu-toggle:hover { border-color: var(--accent-dim); color: var(--accent); }
 
+  /* Shrink to the same 28px .mobile-menu-toggle already uses, for the same
+     reason — more room on line 1 for the logo/title + Discovery/Library
+     tabs before wrapping. */
+  #favourites-list-button, #help-button {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
   #top-bar h1 { font-size: 13px; }
   #top-bar h1 .brand-icon { width: 18px; height: 18px; margin-right: 4px; }
 
@@ -1196,7 +1604,7 @@ html, body {
   /* #top-bar wraps to two rows here (title/tabs/help, then search/autoplay/
      reset) rather than desktop's single row, so the toast stack needs more
      clearance to stay below it instead of overlapping the second row. */
-  #toast-container { top: 200px; }
+  #toast-container { top: 120px; }
 
   #settings-sheet-content {
     flex-direction: column;
@@ -1388,9 +1796,57 @@ html, body {
   #node-detail-panel .popup-header-pin.popup-header-pin-active {
     color: var(--accent);
   }
+  /* Overrides the generic #node-detail-panel button:hover rule (filled
+     background + dark text), which otherwise bled into this bare icon
+     button — same fix as .popup-header-favourite below. The two-class
+     .popup-header-pin-active rule above stays more specific for `color`,
+     so an already-pinned track's blue still wins on hover. */
+  #node-detail-panel .popup-header-pin:hover {
+    background: none;
+    color: var(--accent-light);
+  }
   /* Redundant once expanded — .popup-actions's own Pin button is visible
      there, same reasoning as .popup-expand-toggle hiding itself. */
   #node-detail-panel.expanded .popup-header-pin {
+    display: none;
+  }
+
+  /* Same recipe as .popup-header-pin above, but shared across both panels —
+     unlike Pin, favouriting applies to library tracks too, and
+     #library-node-panel has no equivalent header quick-action today. The
+     heart's own solid/regular icon swap (set in JS) conveys state, so
+     there's no need for the "no background fill" caveat pin's comment
+     makes — a heart's fill vs. outline reads clearly at this size. */
+  #node-detail-panel .popup-header-favourite, #library-node-panel .popup-header-favourite {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    align-self: flex-start;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 17px;
+    cursor: pointer;
+  }
+  #node-detail-panel .popup-header-favourite.popup-header-favourite-active, #library-node-panel .popup-header-favourite.popup-header-favourite-active {
+    color: var(--favourite);
+  }
+  /* Overrides the generic #node-detail-panel button:hover rule (filled
+     background + dark text), which otherwise bled into this bare icon
+     button — hovering should tint the glyph a touch, like the active
+     state, not draw a box around it. The two-class .popup-header-favourite-
+     active rule above is more specific than this one, so an already-
+     favourited heart's own pink still wins for `color` on hover; only
+     `background` (which that rule never sets) is free to apply here.  */
+  #node-detail-panel .popup-header-favourite:hover, #library-node-panel .popup-header-favourite:hover {
+    background: none;
+    color: var(--favourite-light);
+  }
+  #node-detail-panel.expanded .popup-header-favourite, #library-node-panel.expanded .popup-header-favourite {
     display: none;
   }
 
@@ -1520,7 +1976,7 @@ html, body {
      path, only close()). */
   #node-detail-panel:not(.expanded) .popup-actions,
   #node-detail-panel:not(.expanded) .popup-section,
-  #library-node-panel:not(.expanded) .popup-add-to-workspace,
+  #library-node-panel:not(.expanded) .popup-actions,
   #library-node-panel:not(.expanded) .popup-section {
     display: none;
   }

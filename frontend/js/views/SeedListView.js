@@ -1,10 +1,12 @@
 import { escapeHtml } from './domUtils.js';
 import { thumbnailImgHtml } from './thumbnail.js';
+import { favouriteHeartHtml } from './trackDetailHelpers.js';
 
 const STATUS_LABEL = { pending: ' (loading…)', unavailable: ' (unavailable)', error: ' (error)' };
 
-export function createSeedListView({ listEl, graphViewModel, onItemClick, onItemHover }) {
+export function createSeedListView({ listEl, graphViewModel, favouritesViewModel, onItemClick, onItemHover }) {
   graphViewModel.subscribe(render);
+  favouritesViewModel.subscribe(render);
   render();
 
   function render() {
@@ -16,7 +18,7 @@ export function createSeedListView({ listEl, graphViewModel, onItemClick, onItem
       li.innerHTML = `
         ${thumbnailImgHtml(seed.videoId)}
         <div class="seed-text">
-          <div class="seed-title">${escapeHtml(seed.title || seed.label)}</div>
+          <div class="seed-title">${escapeHtml(seed.title || seed.label)}${favouriteHeartHtml(favouritesViewModel.isFavourited(seed.id))}</div>
           <div class="seed-meta">${escapeHtml(seed.artist || '')}${statusLabel}</div>
         </div>
       `;

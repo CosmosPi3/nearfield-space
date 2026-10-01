@@ -1,6 +1,9 @@
+import { restoreSession, logout, updateDisplayName } from './services/auth.js';
+import { showAuthGate } from './views/authGate.js';
 import { createSearchViewModel } from './viewmodels/SearchViewModel.js';
 import { createGraphViewModel } from './viewmodels/GraphViewModel.js';
 import { createLibraryGraphViewModel } from './viewmodels/LibraryGraphViewModel.js';
+import { createFavouritesViewModel } from './viewmodels/FavouritesViewModel.js';
 import { createLibrarySearchViewModel } from './viewmodels/LibrarySearchViewModel.js';
 import { createSearchView } from './views/SearchView.js';
 import { createLibrarySearchView } from './views/LibrarySearchView.js';
@@ -8,6 +11,7 @@ import { createSeedListView } from './views/SeedListView.js';
 import { createGraphView } from './views/GraphView.js';
 import { createLibraryGraphView } from './views/LibraryGraphView.js';
 import { createLibraryNodePopup } from './views/LibraryNodePopup.js';
+import { createFavouritesListView } from './views/FavouritesListView.js';
 import { createNodeDetailPanel } from './views/NodeDetailPanel.js';
 import { setupDiscoveryToasts } from './views/discoveryToasts.js';
 import { createTopSimilarView } from './views/TopSimilarView.js';
@@ -15,6 +19,106 @@ import { setupInfoTooltips } from './views/infoTooltip.js';
 import { fromNormalized, toNormalized } from './views/normalize.js';
 import { showToast } from './views/toast.js';
 import { endpointNode } from './views/graphRenderHelpers.js';
+
+// Sign-in is required to use the site at all (the backend rejects every
+// /api/* call without a valid session) — block on it before touching any
+// DOM/viewmodel/API code below.
+let currentUser = await restoreSession();
+if (!currentUser) {
+  currentUser = await showAuthGate({
+    overlayEl: document.getElementById('auth-gate-overlay'),
+    buttonContainerEl: document.getElementById('auth-gate-button'),
+    statusEl: document.getElementById('auth-gate-status'),
+  });
+}
+
+const accountChipEl = document.getElementById('account-chip');
+const accountAvatarEl = document.getElementById('account-avatar');
+const accountNameEl = document.getElementById('account-name');
+accountNameEl.textContent = currentUser.displayName;
+if (currentUser.avatarUrl) accountAvatarEl.src = currentUser.avatarUrl;
+accountChipEl.classList.remove('hidden');
+
+// Confirmation guard against an accidental misclick — logging out otherwise
+// has no undo (back to the sign-in gate, same as a fresh visit).
+const logoutConfirmOverlayEl = document.getElementById('logout-confirm-overlay');
+document.getElementById('account-logout-button').addEventListener('click', () => {
+  logoutConfirmOverlayEl.classList.remove('hidden');
+});
+document.getElementById('logout-confirm-cancel').addEventListener('click', () => {
+  logoutConfirmOverlayEl.classList.add('hidden');
+});
+logoutConfirmOverlayEl.addEventListener('click', (e) => {
+  if (e.target === logoutConfirmOverlayEl) logoutConfirmOverlayEl.classList.add('hidden');
+});
+document.getElementById('logout-confirm-confirm').addEventListener('click', async () => {
+  await logout();
+  window.location.reload();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') logoutConfirmOverlayEl.classList.add('hidden');
+});
+
+// --- Edit display name popover ---------------------------------------------
+const editNamePopoverEl = document.getElementById('edit-display-name-popover');
+const editNameInputEl = document.getElementById('edit-display-name-input');
+const editNameErrorEl = document.getElementById('edit-display-name-error');
+
+function closeEditNamePopover() {
+  editNamePopoverEl.classList.add('hidden');
+  editNameErrorEl.classList.add('hidden');
+}
+
+document.getElementById('account-edit-name-button').addEventListener('click', () => {
+  editNameInputEl.value = currentUser.displayName;
+  editNameErrorEl.classList.add('hidden');
+  editNamePopoverEl.classList.remove('hidden');
+  editNameInputEl.focus();
+});
+document.getElementById('edit-display-name-cancel').addEventListener('click', closeEditNamePopover);
+document.addEventListener('click', (e) => {
+  // closest(), not a plain id check — a tap often lands on the button's
+  // icon child (no id of its own), not the button element itself, which
+  // was closing the popover on the very same click that opened it.
+  if (!editNamePopoverEl.classList.contains('hidden')
+    && !editNamePopoverEl.contains(e.target)
+    && !e.target.closest('#account-edit-name-button')) {
+    closeEditNamePopover();
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeEditNamePopover();
+});
+
+async function saveDisplayName() {
+  try {
+    const updated = await updateDisplayName(editNameInputEl.value);
+    currentUser = { ...currentUser, displayName: updated.displayName };
+    accountNameEl.textContent = currentUser.displayName;
+    closeEditNamePopover();
+    showToast('Display name updated', { variant: 'success' });
+    // Refetches /graph/library so every "Discovered by <name>" credit
+    // attributed to this account picks up the new name immediately,
+    // instead of waiting for the next tab switch's staleness check.
+    libraryGraphViewModel.load();
+  } catch (err) {
+    editNameErrorEl.textContent = err.message;
+    editNameErrorEl.classList.remove('hidden');
+  }
+}
+document.getElementById('edit-display-name-save').addEventListener('click', saveDisplayName);
+editNameInputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') saveDisplayName();
+});
+
+// Shifts the chip out from behind the node popup (desktop only — see
+// style.css) whenever either the Discovery or Library node panel is open,
+// since both are fixed to the same bottom-right-adjacent corner.
+let workspacePopupOpen = false;
+let libraryPopupOpen = false;
+function updateAccountChipOffset() {
+  accountChipEl.classList.toggle('popup-open', workspacePopupOpen || libraryPopupOpen);
+}
 
 // Reads a persisted number, falling back to `defaultValue` if unset/invalid —
 // shared by every slider in the settings sheet so each one only needs to
@@ -33,6 +137,9 @@ const searchResultsEl = document.getElementById('search-results');
 const searchViewModel = createSearchViewModel();
 const graphViewModel = createGraphViewModel();
 await graphViewModel.hydrate(); // restore the persisted workspace before anything renders
+
+const favouritesViewModel = createFavouritesViewModel();
+await favouritesViewModel.hydrate();
 
 const searchView = createSearchView({
   inputEl: searchInputEl,
@@ -104,6 +211,7 @@ autoplayToggleButtonEl.addEventListener('click', () => {
 createSeedListView({
   listEl: document.getElementById('seed-tracks-list'),
   graphViewModel,
+  favouritesViewModel,
   onItemClick: (node) => nodeDetailPanel.open(node),
   onItemHover: (nodeId) => graphView.setHoveredNodeId(nodeId),
 });
@@ -111,6 +219,7 @@ createSeedListView({
 const nodeDetailPanel = createNodeDetailPanel({
   panelEl: document.getElementById('node-detail-panel'),
   graphViewModel,
+  favouritesViewModel,
   branchingInputEl: document.getElementById('branching-input'),
   depthInputEl: document.getElementById('depth-input'),
   onSelectionChange: (nodeId, { autoplay = false } = {}) => {
@@ -121,6 +230,8 @@ const nodeDetailPanel = createNodeDetailPanel({
     // excluded forever, even though it may be this node's actual closest
     // neighbor now that we've navigated back to it.
     if (nodeId != null && !autoplay) playedNodeIds = new Set();
+    workspacePopupOpen = nodeId != null;
+    updateAccountChipOffset();
   },
   onItemHover: (nodeId) => graphView.setHoveredNodeId(nodeId),
   onViewInLibrary: (nodeId) => viewInLibrary(nodeId),
@@ -306,6 +417,7 @@ document.getElementById('graph-options-reset-button').addEventListener('click', 
 createTopSimilarView({
   listEl: document.getElementById('top-similar-list'),
   graphViewModel,
+  favouritesViewModel,
   onItemClick: (node) => nodeDetailPanel.open(node),
   onItemHover: (nodeId) => graphView.setHoveredNodeId(nodeId),
 });
@@ -388,6 +500,7 @@ const libraryGraphViewModel = createLibraryGraphViewModel();
 const libraryNodePopup = createLibraryNodePopup({
   panelEl: document.getElementById('library-node-panel'),
   libraryGraphViewModel,
+  favouritesViewModel,
   onAddToWorkspace: async (node) => {
     await graphViewModel.addTrack(node); // no-op if already present; otherwise persists + loads features
     showWorkspaceTab(); // closes libraryNodePopup
@@ -398,6 +511,8 @@ const libraryNodePopup = createLibraryNodePopup({
     libraryGraphView.setSelectedNodeId(nodeId);
     if (nodeId != null) lastLibraryNodeId = nodeId;
     if (nodeId != null && !autoplay) playedNodeIds = new Set();
+    libraryPopupOpen = nodeId != null;
+    updateAccountChipOffset();
   },
   onVideoEnded: (nodeId) => {
     if (!autoplayEnabled) return;
@@ -431,6 +546,31 @@ const libraryNodePopup = createLibraryNodePopup({
     libraryNodePopup.open(next.node, { autoplay: true });
     libraryGraphView.centerOnNode(next.id);
   },
+});
+
+createFavouritesListView({
+  listEl: document.getElementById('favourites-list'),
+  sortButtonsEl: document.getElementById('favourites-sort-row'),
+  favouritesViewModel,
+  libraryGraphViewModel,
+  onItemClick: (node) => {
+    favouritesModalOverlayEl.classList.add('hidden');
+    viewInLibrary(node.id);
+  },
+});
+
+const favouritesModalOverlayEl = document.getElementById('favourites-modal-overlay');
+document.getElementById('favourites-list-button').addEventListener('click', () => {
+  favouritesModalOverlayEl.classList.remove('hidden');
+});
+document.getElementById('favourites-modal-close').addEventListener('click', () => {
+  favouritesModalOverlayEl.classList.add('hidden');
+});
+favouritesModalOverlayEl.addEventListener('click', (e) => {
+  if (e.target === favouritesModalOverlayEl) favouritesModalOverlayEl.classList.add('hidden');
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') favouritesModalOverlayEl.classList.add('hidden');
 });
 
 const workspaceTabButton = document.getElementById('tab-workspace-button');

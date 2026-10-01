@@ -6,12 +6,15 @@ const { PORT, ALLOWED_ORIGINS } = require('./src/config');
 const { errorMiddleware } = require('./src/utils/errors');
 const { sweepTempDir } = require('./src/utils/tempFiles');
 const { apiLimiter } = require('./src/middleware/rateLimit');
+const requireAuth = require('./src/middleware/requireAuth');
+const authRoutes = require('./src/routes/auth');
 const searchRoutes = require('./src/routes/search');
 const trackRoutes = require('./src/routes/tracks');
 const workspaceRoutes = require('./src/routes/workspace');
 const distanceRoutes = require('./src/routes/distances');
 const lookupRoutes = require('./src/routes/lookup');
 const graphRoutes = require('./src/routes/graph');
+const favoritesRoutes = require('./src/routes/favorites');
 
 sweepTempDir();
 
@@ -23,17 +26,21 @@ app.use(cors({
     if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
     return callback(new Error('Not allowed by CORS'));
   },
-  allowedHeaders: ['Content-Type', 'X-Device-Id'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 app.use('/api', apiLimiter);
 
+app.use('/api/auth', authRoutes);
+
+app.use('/api', requireAuth);
 app.use('/api/search', searchRoutes);
 app.use('/api/tracks', trackRoutes);
 app.use('/api/workspace', workspaceRoutes);
 app.use('/api/distances', distanceRoutes);
 app.use('/api/lookup', lookupRoutes);
 app.use('/api/graph', graphRoutes);
+app.use('/api/favorites', favoritesRoutes);
 
 app.use(errorMiddleware);
 
