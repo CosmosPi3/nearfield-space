@@ -39,7 +39,11 @@ function recordToResponse(record) {
   };
 }
 
-function baseRecord(id, track) {
+// discoveredByUserId is only ever meaningful the first time this id is ever
+// saved (see db/index.js's upsert — it's excluded from ON CONFLICT DO
+// UPDATE), so it's safe to pass on every save regardless of whether this
+// track already exists; a re-extraction's value is simply ignored by SQLite.
+function baseRecord(id, track, userId) {
   return {
     id, name: track.name, artist: track.artist, track: track.track,
     videoId: track.videoId, externalLink: track.externalLink, source: track.source,
@@ -48,18 +52,19 @@ function baseRecord(id, track) {
     spectralCentroidMean: null, spectralFlatnessMean: null, tempoBpm: null, rawTempoBpm: null,
     rmsMean: null, rmsVar: null, energyValence: null,
     featuresJson: null, vectorJson: null, extractedAt: null,
+    discoveredByUserId: userId,
   };
 }
 
 // Shared by both extraction paths below — only how `track` metadata and the
 // audio `sourceUrl` are obtained differs between them.
-async function runPipelineAndSave(id, track, sourceUrl) {
+async function runPipelineAndSave(id, track, sourceUrl, userId) {
   try {
     const { segments, viewCount } = await extractAudioSamples(sourceUrl);
     const result = extractTextureFeatures(segments);
 
     saveTrackRecord({
-      ...baseRecord(id, track),
+      ...baseRecord(id, track, userId),
       viewCount,
       extractionStatus: 'ok',
       spectralCentroidMean: result.features.centroid.mean,
@@ -78,24 +83,24 @@ async function runPipelineAndSave(id, track, sourceUrl) {
     const appErr = err instanceof AppError
       ? err
       : new AppError('EXTRACTION_FAILED', err.message || 'extraction failed', { retryable: true, cause: err });
-    saveTrackRecord({ ...baseRecord(id, track), lastError: appErr.message.slice(0, 500) });
+    saveTrackRecord({ ...baseRecord(id, track, userId), lastError: appErr.message.slice(0, 500) });
     throw appErr;
   }
 }
 
-async function runExtraction(id) {
+async function runExtraction(id, userId) {
   const track = await cosineClient.getTrack(id);
   if (!track) throw new AppError('NOT_FOUND', `Track ${id} not found`);
 
   if (!track.videoId) {
-    saveTrackRecord({ ...baseRecord(id, track), lastError: 'No video_id available' });
+    saveTrackRecord({ ...baseRecord(id, track, userId), lastError: 'No video_id available' });
     throw new AppError('VIDEO_UNAVAILABLE', `Track ${id} has no linked video`);
   }
 
-  return runPipelineAndSave(id, track, `https://www.youtube.com/watch?v=${track.videoId}`);
+  return runPipelineAndSave(id, track, `https://www.youtube.com/watch?v=${track.videoId}`, userId);
 }
 
-async function getFeatures(id, { refresh = false } = {}) {
+async function getFeatures(id, { refresh = false } = {}, userId) {
   if (!refresh) {
     const existing = getTrackRecord(id);
     if (existing && existing.extraction_status === 'ok') {
@@ -105,7 +110,7 @@ async function getFeatures(id, { refresh = false } = {}) {
 
   if (inFlight.has(id)) return inFlight.get(id);
 
-  const promise = extractionLimiter.schedule(() => runExtraction(id)).finally(() => inFlight.delete(id));
+  const promise = extractionLimiter.schedule(() => runExtraction(id, userId)).finally(() => inFlight.delete(id));
   inFlight.set(id, promise);
   return promise;
 }
@@ -141,7 +146,7 @@ function detectSourceLabel(sourceUrl) {
 // These tracks have no cosine.club id, so they can never be a discoverFrom
 // seed (nothing to query for similar tracks) — but they're otherwise full
 // citizens: real vectors, real distances, real "most similar to pinned" entries.
-async function runManualExtraction(id, sourceUrl) {
+async function runManualExtraction(id, sourceUrl, userId) {
   const meta = await probeMetadata(sourceUrl);
   const track = {
     videoId: extractYoutubeVideoId(sourceUrl),
@@ -151,17 +156,17 @@ async function runManualExtraction(id, sourceUrl) {
     externalLink: sourceUrl,
     source: detectSourceLabel(sourceUrl),
   };
-  return runPipelineAndSave(id, track, sourceUrl);
+  return runPipelineAndSave(id, track, sourceUrl, userId);
 }
 
-async function addManualTrack(sourceUrl) {
+async function addManualTrack(sourceUrl, userId) {
   const id = `manual:${sourceUrl}`;
   const existing = getTrackRecord(id);
   if (existing && existing.extraction_status === 'ok') return recordToResponse(existing);
 
   if (inFlight.has(id)) return inFlight.get(id);
 
-  const promise = extractionLimiter.schedule(() => runManualExtraction(id, sourceUrl)).finally(() => inFlight.delete(id));
+  const promise = extractionLimiter.schedule(() => runManualExtraction(id, sourceUrl, userId)).finally(() => inFlight.delete(id));
   inFlight.set(id, promise);
   return promise;
 }
@@ -172,7 +177,7 @@ async function addManualTrack(sourceUrl) {
 // extracts from it exactly like a manually-pasted YouTube link would.
 // Metadata comes from Discogs (clean "Artist - Track"), not probeMetadata,
 // since a YouTube video title/uploader is much noisier.
-async function addTrackViaDiscogsFallback(query) {
+async function addTrackViaDiscogsFallback(query, userId) {
   const release = await discogsClient.searchTopRelease(query);
   if (!release) throw new AppError('NOT_FOUND', `No Discogs match for "${query}"`);
 
@@ -199,7 +204,7 @@ async function addTrackViaDiscogsFallback(query) {
 
   if (inFlight.has(id)) return inFlight.get(id);
 
-  const promise = extractionLimiter.schedule(() => runPipelineAndSave(id, track, sourceUrl)).finally(() => inFlight.delete(id));
+  const promise = extractionLimiter.schedule(() => runPipelineAndSave(id, track, sourceUrl, userId)).finally(() => inFlight.delete(id));
   inFlight.set(id, promise);
   return promise;
 }

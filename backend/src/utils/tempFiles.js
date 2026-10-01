@@ -21,4 +21,4 @@ function newTempPath(ext) {
   return path.join(TEMP_DIR, `${randomUUID()}.${ext}`);
 }
 
-module.exports = { ensureTempDir, sweepTempDir, newTempPath };
+module.exports = { sweepTempDir, newTempPath };

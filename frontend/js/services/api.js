@@ -1,4 +1,4 @@
-import { getDeviceId } from './deviceId.js';
+import { getToken } from './auth.js';
 
 const BASE = (() => {
   const { hostname } = window.location;
@@ -17,74 +17,67 @@ async function handle(res) {
   return res.json();
 }
 
-// Scopes the Discover workspace to this browser/device -- every request
-// carries the same generated id so the backend never mixes one device's
-// graph with another's.
-async function workspaceFetch(path, options = {}) {
-  const headers = { ...(options.headers || {}), 'X-Device-Id': getDeviceId() };
-  const res = await fetch(`${BASE}/workspace${path}`, { ...options, headers });
+// Every API route requires sign-in (see backend/server.js) -- this is the
+// single place that attaches the current session's bearer token, so no
+// individual call site has to think about auth.
+async function authedFetch(path, options = {}) {
+  const headers = { ...(options.headers || {}), Authorization: `Bearer ${getToken()}` };
+  const res = await fetch(`${BASE}${path}`, { ...options, headers });
   return handle(res);
 }
 
 export async function search(query) {
-  const res = await fetch(`${BASE}/search?q=${encodeURIComponent(query)}`);
-  const json = await handle(res);
+  const json = await authedFetch(`/search?q=${encodeURIComponent(query)}`);
   return json.results;
 }
 
 export async function lookupByUrl(url) {
-  const res = await fetch(`${BASE}/lookup?url=${encodeURIComponent(url)}`);
-  const json = await handle(res);
+  const json = await authedFetch(`/lookup?url=${encodeURIComponent(url)}`);
   return json.results;
 }
 
 export async function getSimilar(id, limit = 10) {
-  const res = await fetch(`${BASE}/tracks/${encodeURIComponent(id)}/similar?limit=${limit}`);
-  return handle(res);
+  return authedFetch(`/tracks/${encodeURIComponent(id)}/similar?limit=${limit}`);
 }
 
 // Discovery path for tracks with no cosine.club id (e.g. manually-added) —
 // ranks against every other track ever analyzed in our own cache, rather
 // than asking cosine.club's /similar.
 export async function getNearestTracks(id, limit = 20) {
-  const res = await fetch(`${BASE}/tracks/${encodeURIComponent(id)}/nearest?limit=${limit}`);
-  return handle(res);
+  return authedFetch(`/tracks/${encodeURIComponent(id)}/nearest?limit=${limit}`);
 }
 
 export async function getFeatures(id, { refresh = false } = {}) {
-  const res = await fetch(`${BASE}/tracks/${encodeURIComponent(id)}/features${refresh ? '?refresh=1' : ''}`);
-  return handle(res);
+  return authedFetch(`/tracks/${encodeURIComponent(id)}/features${refresh ? '?refresh=1' : ''}`);
 }
 
 // For tracks not in cosine.club's catalog — extracts directly from a
 // YouTube/Bandcamp/SoundCloud URL. Can take ~10-20s (real extraction, no cache hit possible on first call).
 export async function addManualTrack(url) {
-  const res = await fetch(`${BASE}/tracks/manual`, {
+  return authedFetch('/tracks/manual', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url }),
   });
-  return handle(res);
 }
 
 // For a plain-text search with zero cosine.club matches — finds a release on
 // Discogs, resolves it to a YouTube video, and extracts directly. Same
 // ~10-20s real-extraction cost as addManualTrack.
 export async function discogsFallbackLookup(query) {
-  const res = await fetch(`${BASE}/tracks/discogs-fallback`, {
+  return authedFetch('/tracks/discogs-fallback', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query }),
   });
-  return handle(res);
 }
 
 export async function getWorkspace() {
-  return workspaceFetch('');
+  return authedFetch('/workspace');
 }
 
 export async function addWorkspaceNode({ id, kind, viaId = null, cosineScore = null }) {
-  return workspaceFetch('/nodes', {
+  return authedFetch('/workspace/nodes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, kind, viaId, cosineScore }),
@@ -95,7 +88,7 @@ export async function addWorkspaceNode({ id, kind, viaId = null, cosineScore = n
 // that's already in the graph -- used when a second, independent discovery
 // run surfaces an already-known track from a different pinned seed.
 export async function addWorkspaceDiscovery({ childId, parentId, similarity = null, cosineScore = null }) {
-  return workspaceFetch('/discoveries', {
+  return authedFetch('/workspace/discoveries', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ childId, parentId, similarity, cosineScore }),
@@ -103,7 +96,7 @@ export async function addWorkspaceDiscovery({ childId, parentId, similarity = nu
 }
 
 export async function setWorkspaceNodeSimilarity(id, similarity) {
-  return workspaceFetch(`/nodes/${encodeURIComponent(id)}/similarity`, {
+  return authedFetch(`/workspace/nodes/${encodeURIComponent(id)}/similarity`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ similarity }),
@@ -111,23 +104,34 @@ export async function setWorkspaceNodeSimilarity(id, similarity) {
 }
 
 export async function removeWorkspaceNode(id) {
-  return workspaceFetch(`/nodes/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  return authedFetch(`/workspace/nodes/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
 export async function clearWorkspace() {
-  return workspaceFetch('', { method: 'DELETE' });
+  return authedFetch('/workspace', { method: 'DELETE' });
 }
 
 export async function getBatchDistances(ids, threshold = 0.85) {
-  const res = await fetch(`${BASE}/distances/batch`, {
+  return authedFetch('/distances/batch', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ids, threshold }),
   });
-  return handle(res);
 }
 
 export async function getLibraryGraph(threshold = 0.75) {
-  const res = await fetch(`${BASE}/graph/library?threshold=${encodeURIComponent(threshold)}`);
-  return handle(res);
+  return authedFetch(`/graph/library?threshold=${encodeURIComponent(threshold)}`);
+}
+
+export async function getFavorites() {
+  const json = await authedFetch('/favorites');
+  return json.trackIds;
+}
+
+export async function addFavorite(trackId) {
+  return authedFetch(`/favorites/${encodeURIComponent(trackId)}`, { method: 'POST' });
+}
+
+export async function removeFavorite(trackId) {
+  return authedFetch(`/favorites/${encodeURIComponent(trackId)}`, { method: 'DELETE' });
 }

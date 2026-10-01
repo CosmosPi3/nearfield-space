@@ -1,9 +1,11 @@
 import { escapeHtml } from './domUtils.js';
 import { toDisplayScore } from './scoreDisplay.js';
 import { thumbnailImgHtml } from './thumbnail.js';
+import { favouriteHeartHtml } from './trackDetailHelpers.js';
 
-export function createTopSimilarView({ listEl, graphViewModel, onItemClick, onItemHover }) {
+export function createTopSimilarView({ listEl, graphViewModel, favouritesViewModel, onItemClick, onItemHover }) {
   graphViewModel.subscribe(render);
+  favouritesViewModel.subscribe(render);
   render();
 
   function render() {
@@ -15,7 +17,7 @@ export function createTopSimilarView({ listEl, graphViewModel, onItemClick, onIt
       li.innerHTML = `
         ${thumbnailImgHtml(node.videoId)}
         <div class="top-similar-text">
-          <div class="top-similar-title">${escapeHtml(node.title || node.label)}</div>
+          <div class="top-similar-title">${escapeHtml(node.title || node.label)}${favouriteHeartHtml(favouritesViewModel.isFavourited(node.id))}</div>
           <div class="top-similar-meta">${escapeHtml(node.artist || '')} · <span class="top-similar-score">${toDisplayScore(avgScore).toFixed(2)}</span></div>
           <div class="top-similar-views">${views}</div>
         </div>
