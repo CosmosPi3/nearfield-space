@@ -1529,16 +1529,34 @@ html, body {
      corner regardless of .popup-open. */
   #account-chip.popup-open { right: 16px; }
 
+  /* Shrunk slightly from desktop so the chip's left edge clears
+     #settings-pull-tab's right edge instead of just barely overlapping it
+     in this bottom-right corner. */
+  #account-chip { gap: 6px; padding: 5px 8px; }
+  #account-avatar { width: 22px; height: 22px; }
+  #account-name { font-size: 11px; }
+  #account-edit-name-button, #account-logout-button {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+  }
+
   #top-bar {
     flex-wrap: wrap;
     /* Split rather than the shorthand `gap` — column-gap keeps the same
        horizontal spacing within each wrapped line (title/tabs/help, and
        search/autoplay/reset), while row-gap alone controls the vertical
        gap between those two lines, which was needlessly tall at 10px. */
-    column-gap: 10px;
+    column-gap: 6px;
     row-gap: 4px;
-    padding: 10px 12px;
+    padding: 8px 10px;
   }
+
+  /* Tighter than desktop's 4px so line 1 (hamburger/logo/tabs/favourites/
+     help) has a better chance of fitting without wrapping early. */
+  #view-tabs { gap: 3px; }
+
+  .view-tab { padding: 5px 8px; font-size: 12px; }
 
   /* Explicit visual order (title/tabs/help on line 1, search/reset on
      line 2) via `order`, not DOM changes. The ::after pseudo-element is a
@@ -1567,29 +1585,29 @@ html, body {
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     padding: 0;
     background: var(--panel-alt);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     color: var(--text);
     cursor: pointer;
-    font-size: 12px;
+    font-size: 11px;
   }
   .mobile-menu-toggle:hover { border-color: var(--accent-dim); color: var(--accent); }
 
-  /* Shrink to the same 28px .mobile-menu-toggle already uses, for the same
+  /* Shrink to the same 26px .mobile-menu-toggle already uses, for the same
      reason — more room on line 1 for the logo/title + Discovery/Library
      tabs before wrapping. */
   #favourites-list-button, #help-button {
-    width: 28px;
-    height: 28px;
-    font-size: 12px;
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
   }
 
-  #top-bar h1 { font-size: 13px; }
-  #top-bar h1 .brand-icon { width: 18px; height: 18px; margin-right: 4px; }
+  #top-bar h1 { font-size: 12px; }
+  #top-bar h1 .brand-icon { width: 16px; height: 16px; margin-right: 3px; }
 
   /* Collapsing hides just search + Reset Graph (line 2 of the header) —
      title/tabs/help stay visible on line 1 either way. Dropping the
@@ -1599,7 +1617,7 @@ html, body {
   #top-bar.collapsed > #autoplay-toggle-button,
   #top-bar.collapsed > #reset-graph-button { display: none; }
   #top-bar.collapsed::after { display: none; }
-  #top-bar.collapsed { padding: 6px 10px; }
+  #top-bar.collapsed { padding: 5px 8px; }
 
   /* #top-bar wraps to two rows here (title/tabs/help, then search/autoplay/
      reset) rather than desktop's single row, so the toast stack needs more
