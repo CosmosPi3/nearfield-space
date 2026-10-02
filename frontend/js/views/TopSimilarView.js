@@ -4,6 +4,7 @@ import { thumbnailImgHtml } from './thumbnail.js';
 import { favouriteHeartHtml } from './trackDetailHelpers.js';
 
 export function createTopSimilarView({ listEl, graphViewModel, favouritesViewModel, onItemClick, onItemHover }) {
+  let selectedNodeId = null;
   graphViewModel.subscribe(render);
   favouritesViewModel.subscribe(render);
   render();
@@ -13,6 +14,7 @@ export function createTopSimilarView({ listEl, graphViewModel, favouritesViewMod
     listEl.innerHTML = '';
     for (const { node, avgScore } of topSimilar) {
       const li = document.createElement('li');
+      li.classList.toggle('top-similar-item-active', node.id === selectedNodeId);
       const views = node.viewCount != null ? `${node.viewCount.toLocaleString()} views` : 'views unknown';
       li.innerHTML = `
         ${thumbnailImgHtml(node.videoId)}
@@ -28,4 +30,11 @@ export function createTopSimilarView({ listEl, graphViewModel, favouritesViewMod
       listEl.appendChild(li);
     }
   }
+
+  function setSelectedNodeId(nodeId) {
+    selectedNodeId = nodeId;
+    render();
+  }
+
+  return { setSelectedNodeId };
 }

@@ -145,16 +145,18 @@ const searchView = createSearchView({
   inputEl: searchInputEl,
   dropdownEl: searchResultsEl,
   searchViewModel,
-  // Adds the track to the graph without pinning it, and opens its popup
-  // immediately (in "Loading features…" state — the panel re-renders
-  // reactively once extraction finishes). Pinning is now an explicit choice
-  // via the popup's Pin button, not automatic on search-select.
+  // Pins the track straight away and opens its popup immediately (in
+  // "Loading features…" state — the panel re-renders reactively once
+  // extraction finishes). A user who searches for a track is almost always
+  // about to use it as a seed for discovery, so auto-pinning here saves the
+  // extra explicit tap on the popup's Pin button; unpinning is still
+  // available there if this one wasn't meant to be a seed.
   onSelect: (track) => {
-    graphViewModel.addTrack(track);
+    graphViewModel.pinTrack(track);
     nodeDetailPanel.open(track);
   },
   onManualAdd: (url) => {
-    graphViewModel.addManualTrack(url);
+    graphViewModel.pinManualTrack(url);
     nodeDetailPanel.open({ id: `manual:${url}` });
   },
   // Keeps the toast entirely at this composition layer — GraphViewModel
@@ -176,6 +178,7 @@ const searchView = createSearchView({
 // Assigned once createGraphView runs below — these callbacks are only ever
 // invoked later, from a user click/hover, by which point this is set.
 let graphView;
+let topSimilarView;
 
 // Remembers whichever node was last open in each tab so switching tabs and
 // back reopens it, instead of leaving both panels closed. Only updated on a
@@ -224,6 +227,7 @@ const nodeDetailPanel = createNodeDetailPanel({
   depthInputEl: document.getElementById('depth-input'),
   onSelectionChange: (nodeId, { autoplay = false } = {}) => {
     graphView.setSelectedNodeId(nodeId);
+    topSimilarView.setSelectedNodeId(nodeId);
     if (nodeId != null) lastWorkspaceNodeId = nodeId;
     // A manual open (not one autoplay drove itself) restarts the walk from
     // here — otherwise a track played earlier in a previous hop stays
@@ -414,7 +418,7 @@ document.getElementById('graph-options-reset-button').addEventListener('click', 
   libraryGraphView.setChargeStrength(chargeStrength);
 });
 
-createTopSimilarView({
+topSimilarView = createTopSimilarView({
   listEl: document.getElementById('top-similar-list'),
   graphViewModel,
   favouritesViewModel,
