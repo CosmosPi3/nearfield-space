@@ -161,8 +161,9 @@ export function createGraphViewModel() {
     notify();
   }
 
-  // Adds a track to the graph without pinning it — search/manual-add land
-  // here now; the user promotes it to a seed later via the popup's Pin button.
+  // Adds a track to the graph without pinning it — used for "add to
+  // workspace" from the Library tab, where the user is browsing rather than
+  // searching, so auto-pinning would be presumptuous.
   function addTrack(track) {
     return addOrPinTrack(track, 'discovered');
   }
@@ -171,7 +172,7 @@ export function createGraphViewModel() {
     return addOrPinTrack(track, 'seed');
   }
 
-  // Parameterized like addOrPinTrack above; only addManualTrack uses it
+  // Parameterized like addOrPinTrack above; only pinManualTrack uses it
   // currently, but kept symmetric with addOrPinTrack's kind param.
   async function addOrPinManualTrack(url, kind) {
     const id = `manual:${url}`;
@@ -202,9 +203,8 @@ export function createGraphViewModel() {
     notify();
   }
 
-  // Same as addTrack, for a URL not in cosine.club's catalog.
-  function addManualTrack(url) {
-    return addOrPinManualTrack(url, 'discovered');
+  function pinManualTrack(url) {
+    return addOrPinManualTrack(url, 'seed');
   }
 
   // For a plain-text search that missed cosine.club's catalog entirely — the
@@ -213,12 +213,17 @@ export function createGraphViewModel() {
   // no placeholder node to add up front (a bare text query isn't a valid
   // track identity until that resolution succeeds) and no separate
   // loadFeaturesFor step needed afterward. A failure just propagates to the
-  // caller, which is expected to surface it (e.g. as a toast).
+  // caller, which is expected to surface it (e.g. as a toast). Lands as a
+  // seed straight away, same as the other search-originated paths.
   async function addTrackFromDiscogsFallback(query) {
     const result = await api.discogsFallbackLookup(query);
-    if (!graphState.hasNode(result.id)) graphState.addNode(createTrackNode(result, { kind: 'discovered' }));
+    if (graphState.hasNode(result.id)) {
+      graphState.updateNode(result.id, { kind: 'seed' });
+    } else {
+      graphState.addNode(createTrackNode(result, { kind: 'seed' }));
+    }
     notify();
-    await persistAddNode({ id: result.id, kind: 'discovered' });
+    await persistAddNode({ id: result.id, kind: 'seed' });
     applyFeatureResult(result.id, result);
     notify();
     if (graphState.nodes.get(result.id)?.status === 'ready') notifyLibraryChange();
@@ -574,7 +579,7 @@ export function createGraphViewModel() {
     onNodeDiscovered,
     hydrate,
     addTrack,
-    addManualTrack,
+    pinManualTrack,
     addTrackFromDiscogsFallback,
     pinTrack,
     unpinTrack,

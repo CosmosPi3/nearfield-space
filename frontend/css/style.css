@@ -536,6 +536,11 @@ html, body {
 
 #top-similar-list li:hover { border-color: var(--accent-dim); }
 
+#top-similar-list li.top-similar-item-active {
+  border-color: var(--accent);
+  background: rgba(94, 180, 255, 0.12);
+}
+
 #top-similar-list img {
   width: 36px;
   height: 36px;

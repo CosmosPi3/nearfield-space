@@ -1,5 +1,5 @@
 import { escapeHtml } from './domUtils.js';
-import { videoSlotHtml, statsChipsHtml, externalLinkHtml, searchIconsHtml, relationsHtml as buildRelationsHtml } from './trackDetailHelpers.js';
+import { videoSlotHtml, statsChipsHtml, externalLinkHtml, searchIconsHtml, relationsHtml as buildRelationsHtml, syncFavouriteButtons, syncFavouriteIndicators } from './trackDetailHelpers.js';
 import { createMiniPlayer } from './miniPlayer.js';
 
 const STATUS_MESSAGE = {
@@ -41,7 +41,9 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, favouritesViewM
   // Keeps the heart in sync if the same track is (un)favourited from the
   // Library popup while this panel is open.
   favouritesViewModel.subscribe(() => {
-    if (currentNodeId) renderPanel(currentNodeId);
+    if (!currentNodeId) return;
+    syncFavouriteButtons(panelEl, favouritesViewModel.isFavourited(currentNodeId));
+    syncFavouriteIndicators(panelEl, (id) => favouritesViewModel.isFavourited(id));
   });
 
   function open(node, { autoplay = false } = {}) {

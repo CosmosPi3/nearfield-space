@@ -1,5 +1,5 @@
 import { escapeHtml } from './domUtils.js';
-import { videoSlotHtml, statsChipsHtml, externalLinkHtml, searchIconsHtml, neighborsSectionHtml } from './trackDetailHelpers.js';
+import { videoSlotHtml, statsChipsHtml, externalLinkHtml, searchIconsHtml, neighborsSectionHtml, syncFavouriteButtons, syncFavouriteIndicators } from './trackDetailHelpers.js';
 import { endpointNode } from './graphRenderHelpers.js';
 import { createMiniPlayer } from './miniPlayer.js';
 import * as api from '../services/api.js';
@@ -31,7 +31,9 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, favouri
   // Keeps the heart in sync if the same track is (un)favourited from the
   // Discovery popup while this panel is open.
   favouritesViewModel.subscribe(() => {
-    if (currentNode) render();
+    if (!currentNode) return;
+    syncFavouriteButtons(panelEl, favouritesViewModel.isFavourited(currentNode.id));
+    syncFavouriteIndicators(panelEl, (id) => favouritesViewModel.isFavourited(id));
   });
 
   function open(node, { autoplay = false } = {}) {

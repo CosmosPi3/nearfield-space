@@ -29,12 +29,14 @@ export function externalLinkHtml({ externalLink, source }) {
 
 // Font Awesome's actual brand marks (fa-brands), rather than hand-rolled
 // approximations — https://fontawesome.com is loaded globally via CDN in
-// index.html.
+// index.html. Tidal's brand mark (fa-tidal) is Pro-only and not in the Free
+// bundle we load, so it uses a generic fa-solid icon instead.
 const SEARCH_ICON_CLASS = {
   Bandcamp: 'fa-brands fa-bandcamp',
   Spotify: 'fa-brands fa-spotify',
   SoundCloud: 'fa-brands fa-soundcloud',
   'Apple Music': 'fa-brands fa-itunes-note',
+  Tidal: 'fa-solid fa-water',
 };
 
 // Best-effort search-by-title-and-artist, not a confirmed link — one icon per
@@ -44,6 +46,7 @@ const SEARCH_PLATFORMS = [
   { label: 'Spotify', url: (q) => `https://open.spotify.com/search/${q}` },
   { label: 'SoundCloud', url: (q) => `https://soundcloud.com/search?q=${q}` },
   { label: 'Apple Music', url: (q) => `https://music.apple.com/search?term=${q}` },
+  { label: 'Tidal', url: (q) => `https://tidal.com/search?q=${q}` },
 ];
 
 function searchIconHtml(label, href) {
@@ -61,6 +64,41 @@ export function searchIconsHtml({ artist, title }) {
 // when the track is favourited, per FavouritesViewModel.js.
 export function favouriteHeartHtml(favourited) {
   return favourited ? '<i class="fa-solid fa-heart favourite-indicator" aria-hidden="true"></i>' : '';
+}
+
+// Patches the two clickable favourite buttons for the panel's own current
+// track in place — used instead of a full re-render so a favourite toggle
+// elsewhere in the app never detaches/reattaches the miniPlayer's element
+// (which would reload the YouTube iframe and reset playback).
+export function syncFavouriteButtons(panelEl, favourited) {
+  [
+    ['.popup-header-favourite', 'popup-header-favourite-active'],
+    ['.popup-favourite', 'popup-favourite-active'],
+  ].forEach(([selector, activeClass]) => {
+    const btn = panelEl.querySelector(selector);
+    if (!btn) return;
+    btn.classList.toggle(activeClass, favourited);
+    btn.title = favourited ? 'Unfavourite' : 'Favourite';
+    const icon = btn.querySelector('i');
+    icon?.classList.toggle('fa-solid', favourited);
+    icon?.classList.toggle('fa-regular', !favourited);
+  });
+}
+
+// Patches the non-clickable heart indicators next to tracks in the
+// relations/neighbors lists in place, for the same reason as above.
+export function syncFavouriteIndicators(panelEl, isFavourited) {
+  panelEl.querySelectorAll('[data-node-id]').forEach((el) => {
+    const titleEl = el.querySelector('.popup-relation-title, .popup-found-via-title');
+    if (!titleEl) return;
+    const favourited = isFavourited(el.dataset.nodeId);
+    const existingIcon = titleEl.querySelector('.favourite-indicator');
+    if (favourited && !existingIcon) {
+      titleEl.insertAdjacentHTML('beforeend', favouriteHeartHtml(true));
+    } else if (!favourited && existingIcon) {
+      existingIcon.remove();
+    }
+  });
 }
 
 // A compact version of the #top-similar-list row pattern (thumbnail + title +
