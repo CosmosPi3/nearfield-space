@@ -41,7 +41,6 @@ const SELECTED_LINK_WIDTH_BOOST = 1.5;
 
 const DEFAULT_CHARGE_STRENGTH = -50;
 const DEFAULT_GRAVITY_STRENGTH = 0.06;
-const THRESHOLD_DEBOUNCE_MS = 300;
 // A single node's own radius is only a few px at the zoom level the full
 // library settles at — this is "close enough to read the node clearly and
 // its immediate neighbors" rather than any principled fit-to-node math.
@@ -355,12 +354,14 @@ export function createLibraryGraphView({
   window.addEventListener('resize', resize);
   resize();
 
-  let debounceTimer = null;
+  // Mirrors GraphView's own edge-threshold slider — setThreshold() is a
+  // synchronous, no-network local filter now, so there's nothing to
+  // debounce; applying it on every `input` tick is what makes the edge set
+  // update live while dragging instead of lagging behind.
   thresholdInputEl.addEventListener('input', (e) => {
     const value = parseFloat(e.target.value);
     thresholdValueEl.textContent = value.toFixed(2);
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => libraryGraphViewModel.setThreshold(value), THRESHOLD_DEBOUNCE_MS);
+    libraryGraphViewModel.setThreshold(value);
   });
 
   // Mirrors GraphView's setters — driven by the same "Graph options" sliders

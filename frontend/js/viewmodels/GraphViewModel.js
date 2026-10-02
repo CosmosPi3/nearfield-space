@@ -19,6 +19,15 @@ export function createGraphViewModel() {
   // partial results (last-to-finish would win instead of last-to-start).
   let similarityRefreshToken = 0;
 
+  // Last-fetched all-pairs result, plus which ready-node ids it covers.
+  // Unpinning/removing a node never introduces a pair we didn't already
+  // know (the remaining ready-node ids are always a subset of some earlier
+  // fetch's ids — a kind flip, like pin/unpin, doesn't change the ready set
+  // at all) — so refreshSimilarityEdges() only needs a fresh network fetch
+  // when the CURRENT ready ids aren't all already covered by this cache.
+  let cachedPairs = [];
+  let cachedForIds = new Set();
+
   // Separate from the reactive `store` above (which drives this graph's own
   // UI) — the Library tab has no reason to re-render on every hover/progress
   // tick, only when a track newly lands in the backend's tracks table. Kept
@@ -272,7 +281,10 @@ export function createGraphViewModel() {
   // average distance to ALL pinned seeds, for the "most similar to pinned"
   // list. Distances themselves are a durable fact from the backend's
   // persistent cache (computing-and-caching any gaps server-side), not
-  // session-relative.
+  // session-relative — so once we've fetched all pairs among a given set of
+  // ready ids, pin/unpin/remove calls that only shrink that set (or just
+  // flip a kind, like plain pin/unpin) are answered entirely from
+  // `cachedPairs`, with no network round trip at all.
   async function refreshSimilarityEdges() {
     const token = ++similarityRefreshToken;
     graphState.removeLinksByType('similar');
@@ -283,14 +295,25 @@ export function createGraphViewModel() {
       return;
     }
 
-    // -1, not 0 — raw cosine similarity on standardized vectors ranges over
-    // [-1,1], so a threshold of 0 would silently drop every negative
-    // (actively-dissimilar, not just "unrelated") pair from the average.
-    const { pairs } = await api.getBatchDistances(readyNodes.map((n) => n.id), -1);
-    // A newer call has since started (e.g. another seed finished loading) —
-    // its result supersedes this one. Bail before applying anything, so a
-    // stale call never partially overwrites a fresher, more-complete result.
-    if (token !== similarityRefreshToken) return;
+    const readyIds = readyNodes.map((n) => n.id);
+    let pairs;
+    if (readyIds.every((id) => cachedForIds.has(id))) {
+      const readySet = new Set(readyIds);
+      pairs = cachedPairs.filter((p) => readySet.has(p.trackAId) && readySet.has(p.trackBId));
+    } else {
+      // -1, not 0 — raw cosine similarity on standardized vectors ranges
+      // over [-1,1], so a threshold of 0 would silently drop every negative
+      // (actively-dissimilar, not just "unrelated") pair from the average.
+      const result = await api.getBatchDistances(readyIds, -1);
+      // A newer call has since started (e.g. another seed finished loading)
+      // — its result supersedes this one. Bail before applying anything, so
+      // a stale call never partially overwrites a fresher, more-complete
+      // result.
+      if (token !== similarityRefreshToken) return;
+      pairs = result.pairs;
+      cachedPairs = pairs;
+      cachedForIds = new Set(readyIds);
+    }
 
     const scoresByNode = new Map();
     for (const { trackAId, trackBId, cosineScore } of pairs) {
