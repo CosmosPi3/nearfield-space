@@ -338,6 +338,7 @@ chargeValueEl.textContent = initialChargeNorm;
 graphView = createGraphView({
   containerEl: document.getElementById('graph-container'),
   graphViewModel,
+  favouritesViewModel,
   onNodeClick: (node) => nodeDetailPanel.open(node),
   initialEdgeThreshold,
   initialLinkDistanceMin: fromNormalized(initialLinkDistanceMinNorm, ...LINK_DISTANCE_MIN_RANGE),
@@ -594,6 +595,7 @@ const resetGraphButtonEl = document.getElementById('reset-graph-button');
 const libraryGraphView = createLibraryGraphView({
   containerEl: libraryContainerEl,
   libraryGraphViewModel,
+  favouritesViewModel,
   onNodeClick: (node) => libraryNodePopup.open(node),
   initialLinkDistanceMin: fromNormalized(parseFloat(linkDistanceMinInputEl.value), ...LINK_DISTANCE_MIN_RANGE),
   initialLinkDistanceMax: fromNormalized(parseFloat(linkDistanceMaxInputEl.value), ...LINK_DISTANCE_MAX_RANGE),

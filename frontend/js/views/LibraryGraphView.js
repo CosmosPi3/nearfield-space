@@ -39,6 +39,15 @@ const SELECTED_RING_WIDTH = 3;
 const SELECTED_LINK_COLOR = 'rgba(94,180,255,0.75)';
 const SELECTED_LINK_WIDTH_BOOST = 1.5;
 
+// Soft halo behind a favourited node — same pink/red as --favourite in
+// style.css (hardcoded here since there's no CSS-variable bridge into JS,
+// matching how every other node/ring color in this file is a hardcoded hex
+// rather than read from CSS). Drawn as a radial gradient rather than
+// ctx.shadowBlur so its falloff is explicit and it never also shadows the
+// node's own border stroke.
+const FAVOURITE_GLOW_COLOR = '214,51,108';
+const FAVOURITE_GLOW_RADIUS_MULT = 2.6;
+
 const DEFAULT_CHARGE_STRENGTH = -50;
 const DEFAULT_GRAVITY_STRENGTH = 0.06;
 // A single node's own radius is only a few px at the zoom level the full
@@ -57,6 +66,7 @@ const FOCUS_DURATION_MS = 800;
 export function createLibraryGraphView({
   containerEl,
   libraryGraphViewModel,
+  favouritesViewModel,
   onNodeClick,
   initialLinkDistanceMin = DEFAULT_MIN_LINK_DISTANCE,
   initialLinkDistanceMax = DEFAULT_MAX_LINK_DISTANCE,
@@ -236,6 +246,24 @@ export function createLibraryGraphView({
       // node's leftover globalAlpha can never bleed into this one's ring.
       ctx.globalAlpha = 1;
 
+      // node.x/y are undefined for a frame or two right as a node is added,
+      // before the simulation gives it a position — createRadialGradient
+      // throws on non-finite coords (unlike ctx.arc, which just no-ops), so
+      // this guard matters even though the other arc() calls below don't need it.
+      if (favouritesViewModel.isFavourited(node.id) && Number.isFinite(node.x) && Number.isFinite(node.y)) {
+        const outerRadius = radius * FAVOURITE_GLOW_RADIUS_MULT;
+        const glowAlpha = dimmed ? 0.65 * DIMMED_NODE_ALPHA : 0.65;
+        const gradient = ctx.createRadialGradient(node.x, node.y, radius * 0.5, node.x, node.y, outerRadius);
+        gradient.addColorStop(0, `rgba(${FAVOURITE_GLOW_COLOR},${glowAlpha})`);
+        gradient.addColorStop(1, `rgba(${FAVOURITE_GLOW_COLOR},0)`);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, outerRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        ctx.restore();
+      }
+
       if (node.id === selectedNodeId) {
         ctx.save();
         ctx.beginPath();
@@ -301,6 +329,9 @@ export function createLibraryGraphView({
   graph.d3Force('gravity', createGravityForce(initialGravity));
 
   libraryGraphViewModel.subscribe(render);
+  // Only the glow depends on favourite status — a repaint is enough, no
+  // need to also rebuild graphData like a full render() would.
+  favouritesViewModel.subscribe(repaint);
   render();
 
   function render() {

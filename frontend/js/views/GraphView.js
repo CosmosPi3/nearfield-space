@@ -62,6 +62,15 @@ const HOVERED_RING_COLOR = 'rgba(255,181,71,0.65)';
 const HOVERED_RING_PADDING = 4;
 const HOVERED_RING_WIDTH = 1.5;
 
+// Soft halo behind a favourited node — same pink/red as --favourite in
+// style.css (hardcoded here since there's no CSS-variable bridge into JS,
+// matching how every other node/ring color in this file is a hardcoded hex
+// rather than read from CSS). Drawn as a radial gradient rather than
+// ctx.shadowBlur so its falloff is explicit and it never also shadows the
+// node's own border/thumbnail stroke.
+const FAVOURITE_GLOW_COLOR = '214,51,108';
+const FAVOURITE_GLOW_RADIUS_MULT = 2;
+
 // Deliberately not the same blue as SEED_LINK_COLOR — a hovered edge and a
 // pinned-track edge are different facts about a link, and sharing a color
 // would make it ambiguous which one a highlighted edge is signaling.
@@ -71,6 +80,7 @@ const HOVERED_LINK_WIDTH_BOOST = 1.5;
 export function createGraphView({
   containerEl,
   graphViewModel,
+  favouritesViewModel,
   onNodeClick,
   initialEdgeThreshold = 0.5,
   initialLinkDistanceMin = DEFAULT_MIN_LINK_DISTANCE,
@@ -100,6 +110,23 @@ export function createGraphView({
       const radius = nodeRadius(node);
       const borderColor = STATUS_OVERRIDE_COLORS[node.status] || NODE_COLORS[node.kind] || NODE_COLORS.discovered;
       const img = getThumbnail(node.videoId, () => repaint());
+
+      // node.x/y are undefined for a frame or two right as a node is added,
+      // before the simulation gives it a position — createRadialGradient
+      // throws on non-finite coords (unlike ctx.arc, which just no-ops), so
+      // this guard matters even though the other arc() calls below don't need it.
+      if (favouritesViewModel.isFavourited(node.id) && Number.isFinite(node.x) && Number.isFinite(node.y)) {
+        const outerRadius = radius * FAVOURITE_GLOW_RADIUS_MULT;
+        const gradient = ctx.createRadialGradient(node.x, node.y, radius * 0.5, node.x, node.y, outerRadius);
+        gradient.addColorStop(0, `rgba(${FAVOURITE_GLOW_COLOR},0.65)`);
+        gradient.addColorStop(1, `rgba(${FAVOURITE_GLOW_COLOR},0)`);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, outerRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        ctx.restore();
+      }
 
       if (node.id === selectedNodeId) {
         ctx.save();
@@ -183,6 +210,9 @@ export function createGraphView({
   graph.d3Force('gravity', createGravityForce(initialGravity));
 
   graphViewModel.subscribe(render);
+  // Only the glow depends on favourite status — a repaint is enough, no
+  // need to also rebuild graphData like a full render() would.
+  favouritesViewModel.subscribe(repaint);
   render();
 
   // Links below the threshold are excluded from the data handed to the
