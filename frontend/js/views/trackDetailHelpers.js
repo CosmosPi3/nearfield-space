@@ -85,6 +85,33 @@ export function syncFavouriteButtons(panelEl, favourited) {
   });
 }
 
+// Patches the pin buttons in place, for the same reason as
+// syncFavouriteButtons above — pinning/unpinning must never detach/reattach
+// the miniPlayer's element via a full re-render. No icon swap needed, unlike
+// the heart: the thumbtack icon is the same fa-solid glyph in both states.
+export function syncPinButtons(panelEl, isPinned) {
+  [
+    ['.popup-header-pin', 'popup-header-pin-active'],
+    ['.popup-pin', 'popup-pin-active'],
+  ].forEach(([selector, activeClass]) => {
+    const btn = panelEl.querySelector(selector);
+    if (!btn) return;
+    btn.classList.toggle(activeClass, isPinned);
+    btn.title = isPinned ? 'Unpin' : 'Pin';
+  });
+}
+
+// Patches the Discover button's disabled state and label in place, for the
+// same reason as above — Discover's progress ticks fire far more often than
+// pin/unpin ever would, so this matters even more there.
+export function syncDiscoverButton(panelEl, { disabled, discovering }) {
+  const btn = panelEl.querySelector('.popup-discover');
+  if (!btn) return;
+  btn.disabled = disabled;
+  const label = btn.querySelector('.popup-discover-label');
+  if (label) label.textContent = discovering ? 'Discovering…' : 'Discover';
+}
+
 // Patches the non-clickable heart indicators next to tracks in the
 // relations/neighbors lists in place, for the same reason as above.
 export function syncFavouriteIndicators(panelEl, isFavourited) {

@@ -1,5 +1,5 @@
 import { escapeHtml } from './domUtils.js';
-import { videoSlotHtml, statsChipsHtml, externalLinkHtml, searchIconsHtml, relationsHtml as buildRelationsHtml, syncFavouriteButtons, syncFavouriteIndicators } from './trackDetailHelpers.js';
+import { videoSlotHtml, statsChipsHtml, externalLinkHtml, searchIconsHtml, relationsHtml as buildRelationsHtml, syncFavouriteButtons, syncFavouriteIndicators, syncPinButtons, syncDiscoverButton } from './trackDetailHelpers.js';
 import { createMiniPlayer } from './miniPlayer.js';
 
 const STATUS_MESSAGE = {
@@ -25,6 +25,26 @@ function buildActionsRowHtml(node) {
     </div>`;
 }
 
+// Sorted "discovered-via" parent/child ids touching this node — the only
+// part of relationsHtml's output that renderPanel's signature needs to
+// track; score/cosineScore churn on an already-listed relation isn't worth a
+// full rebuild.
+function relationsSignature(graphState, nodeId) {
+  const parents = graphState.parentsOf(nodeId, 'discovered-via').map((p) => p.parentId).sort();
+  const children = graphState.childrenOf(nodeId, 'discovered-via').map((c) => c.childId).sort();
+  return `${parents.join(',')}|${children.join(',')}`;
+}
+
+// Fields that genuinely require rebuilding the whole popup's innerHTML —
+// i.e. ones a dedicated patch function below can't handle in place. Pin
+// state (node.kind), the Discover button's running/disabled state, and the
+// relations lists each have their own patch path instead (see the subscribe
+// callback below), so none of those are in here — this is deliberately just
+// the fields that affect the video/stats/header area.
+function contentSignature(node) {
+  return JSON.stringify([node.status, node.videoId, node.viewCount, node.title, node.artist, node.error]);
+}
+
 // A docked right-side panel rather than a floating tooltip — avoids needing
 // to track the node's on-screen position as the graph pans/zooms/simulates.
 export function createNodeDetailPanel({ panelEl, graphViewModel, favouritesViewModel, branchingInputEl, depthInputEl, onSelectionChange, onItemHover, onViewInLibrary, onVideoEnded }) {
@@ -34,9 +54,35 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, favouritesViewM
   // see the `if (!miniPlayer)` branch below — then cleared, so a later
   // reactive re-render (e.g. Discover polling) never replays it.
   let pendingAutoplay = false;
+  // Set at the end of every renderPanel()/patchRelations() call; compared
+  // against on each subsequent notify() to decide whether a real rebuild —
+  // or just a relations-list patch — is needed at all.
+  let lastContentSignature = null;
+  let lastRelationsSignature = null;
 
   graphViewModel.subscribe(() => {
-    if (currentNodeId) renderPanel(currentNodeId);
+    if (!currentNodeId) return;
+    const node = graphViewModel.graphState.nodes.get(currentNodeId);
+    if (!node) {
+      close();
+      return;
+    }
+    if (contentSignature(node) !== lastContentSignature) {
+      renderPanel(currentNodeId);
+      return;
+    }
+    // Content itself is unchanged — likely just a pin toggle or a Discover
+    // progress tick elsewhere, neither of which warrants rebuilding (and
+    // thereby detaching/reloading) the live mini player. Patch the bits
+    // that actually need it instead.
+    const relSig = relationsSignature(graphViewModel.graphState, node.id);
+    if (relSig !== lastRelationsSignature) {
+      patchRelations(node);
+      lastRelationsSignature = relSig;
+    }
+    syncPinButtons(panelEl, node.kind === 'seed');
+    const { discovering } = graphViewModel.getState();
+    syncDiscoverButton(panelEl, { disabled: node.status !== 'ready' || discovering, discovering });
   });
   // Keeps the heart in sync if the same track is (un)favourited from the
   // Library popup while this panel is open.
@@ -49,6 +95,9 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, favouritesViewM
   function open(node, { autoplay = false } = {}) {
     currentNodeId = node.id;
     pendingAutoplay = autoplay;
+    // Force a full render below, even if this node was the last one rendered.
+    lastContentSignature = null;
+    lastRelationsSignature = null;
     // Every open() starts at the mobile peek preview, never mid-expanded —
     // even if a different node was left expanded, e.g. via a relation-item
     // click while browsing full details. Harmless on desktop, where
@@ -73,6 +122,8 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, favouritesViewM
       close();
       return;
     }
+    lastContentSignature = contentSignature(node);
+    lastRelationsSignature = relationsSignature(graphViewModel.graphState, node.id);
 
     const { discovering } = graphViewModel.getState();
     const isManual = node.id.startsWith('manual:'); // no cosine.club id -> Discover uses our own cache instead
@@ -139,7 +190,7 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, favouritesViewM
           ${statsHtml}
           <button class="popup-discover" ${node.status !== 'ready' || discovering ? 'disabled' : ''}
             ${isManual ? 'title="Not in cosine.club\'s catalog — searches only tracks already analyzed in this app, not cosine.club\'s full catalog"' : ''}>
-            <i class="popup-btn-icon fa-solid fa-compass" aria-hidden="true"></i>${discovering ? 'Discovering…' : 'Discover'}
+            <i class="popup-btn-icon fa-solid fa-compass" aria-hidden="true"></i><span class="popup-discover-label">${discovering ? 'Discovering…' : 'Discover'}</span>
           </button>
         </div>
       </div>
@@ -153,7 +204,7 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, favouritesViewM
         </button>
         ${viewInLibraryHtml}
       </div>
-      ${relationsHtml}
+      <div class="popup-relations">${relationsHtml}</div>
       ${actionsRowHtml}
     `;
 
@@ -196,11 +247,31 @@ export function createNodeDetailPanel({ panelEl, graphViewModel, favouritesViewM
       graphViewModel.removeNode(nodeId);
       close();
     });
+    bindRelationListeners();
+  }
+
+  // Shared by renderPanel's own markup and patchRelations' narrower
+  // innerHTML swap below — both wipe out any previously-bound listeners on
+  // the relation items they replace, so both need to redo this.
+  function bindRelationListeners() {
     panelEl.querySelectorAll('.popup-relation-item, .popup-found-via-card').forEach((el) => {
       el.addEventListener('click', () => open({ id: el.dataset.nodeId }));
       el.addEventListener('mouseenter', () => onItemHover?.(el.dataset.nodeId));
       el.addEventListener('mouseleave', () => onItemHover?.(null));
     });
+  }
+
+  // Replaces just the "Found via"/"Discovered via this track" lists in
+  // place — used instead of renderPanel() when only relations changed (e.g.
+  // a Discover run just connected a new track to this node), so finishing a
+  // Discover run never detaches/reloads the live mini player either.
+  function patchRelations(node) {
+    const container = panelEl.querySelector('.popup-relations');
+    if (!container) return;
+    container.innerHTML = node.status === 'ready'
+      ? buildRelationsHtml(graphViewModel.graphState, node.id, (id) => favouritesViewModel.isFavourited(id))
+      : '';
+    bindRelationListeners();
   }
 
   return { open, close };
