@@ -61,7 +61,7 @@ export function getThumbnail(videoId, onLoad) {
 // cluster.
 export const DEFAULT_MIN_LINK_DISTANCE = 100;
 export const DEFAULT_MAX_LINK_DISTANCE = 2500;
-const DISTANCE_CONTRAST_EXPONENT = 2;
+const DISTANCE_CONTRAST_EXPONENT = 3;
 
 export function distanceForSimilarity(similarity, minDistance, maxDistance) {
   const s = Math.max(0, Math.min(1, toDisplayScore(similarity)));
@@ -69,8 +69,8 @@ export function distanceForSimilarity(similarity, minDistance, maxDistance) {
   return minDistance + contrast * (maxDistance - minDistance);
 }
 
-export const MIN_LINK_WIDTH = 0.01;
-export const MAX_LINK_WIDTH = 6;
+export const MIN_LINK_WIDTH = 0;
+export const MAX_LINK_WIDTH = 3;
 
 // Remaps the *visible* score range [edgeThreshold, 1] to [MIN_LINK_WIDTH,
 // MAX_LINK_WIDTH], rather than the full [0,1] range — otherwise raising the

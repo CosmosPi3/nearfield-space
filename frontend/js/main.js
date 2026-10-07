@@ -400,10 +400,14 @@ const CHARGE_STORAGE_KEY = 'nearfieldspace:charge';
 // normalize.js. Defaults are chosen so an untouched slider reproduces
 // GraphView's own hardcoded defaults (100px / 2500px / 0.06 / charge
 // multiplier -50).
-const LINK_DISTANCE_MIN_RANGE = [5, 1000];
-const LINK_DISTANCE_MAX_RANGE = [100, 10000];
+// Min/max link distance and charge (repulsion) are roughly doubled from
+// their original ceilings — the library/workspace graphs have grown enough
+// nodes that the old top end of each slider was a real ceiling, not just a
+// generous one. Gravity's range is left as-is; it hasn't needed widening.
+const LINK_DISTANCE_MIN_RANGE = [5, 2000];
+const LINK_DISTANCE_MAX_RANGE = [100, 20000];
 const GRAVITY_RANGE = [0, 0.3];
-const CHARGE_RANGE = [0, 150]; // stored/displayed as a positive "repulsion" value, negated for GraphView
+const CHARGE_RANGE = [0, 300]; // stored/displayed as a positive "repulsion" value, negated for GraphView
 
 const DEFAULT_LINK_DISTANCE_MIN_NORM = Math.round(toNormalized(100, ...LINK_DISTANCE_MIN_RANGE));
 const DEFAULT_LINK_DISTANCE_MAX_NORM = Math.round(toNormalized(2500, ...LINK_DISTANCE_MAX_RANGE));

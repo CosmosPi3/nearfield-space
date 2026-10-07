@@ -48,7 +48,7 @@ const SELECTED_LINK_WIDTH_BOOST = 1.5;
 const FAVOURITE_GLOW_COLOR = '214,51,108';
 const FAVOURITE_GLOW_RADIUS_MULT = 2.6;
 
-const DEFAULT_CHARGE_STRENGTH = -50;
+const DEFAULT_CHARGE_STRENGTH = -100;
 const DEFAULT_GRAVITY_STRENGTH = 0.06;
 // A single node's own radius is only a few px at the zoom level the full
 // library settles at — this is "close enough to read the node clearly and
