@@ -18,7 +18,7 @@ import * as api from '../services/api.js';
 // node); the stats chips need a fetch — every library track is already
 // fully analyzed (extraction_status='ok'), so /features returns the cached
 // record instantly.
-export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, favouritesViewModel, onAddToWorkspace, onSelectionChange, onVideoEnded }) {
+export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, favouritesViewModel, onAddToWorkspace, onSelectionChange, onVideoEnded, onSkipPrevious, onSkipNext, getSkipState }) {
   let currentNode = null;
   let detail = null;
   let loadError = null;
@@ -47,9 +47,14 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, favouri
     // where .expanded has no CSS effect.
     panelEl.classList.remove('expanded');
     panelEl.classList.remove('hidden');
+    // Before the render below, not after — render()'s getSkipState() call
+    // reads the walk's current position, and onSelectionChange is what
+    // resets that position for a manual (non-autoplay) open. Rendering
+    // first would compute the skip buttons' disabled state one step stale
+    // (empty on first load, or still pointing at the previous node after).
+    onSelectionChange?.(node.id, { autoplay });
     render();
     loadDetail(node.id);
-    onSelectionChange?.(node.id, { autoplay });
   }
 
   async function loadDetail(id) {
@@ -159,9 +164,15 @@ export function createLibraryNodePopup({ panelEl, libraryGraphViewModel, favouri
     const videoSlotEl = panelEl.querySelector('.popup-video-slot');
     if (videoSlotEl) {
       if (!miniPlayer) {
-        miniPlayer = createMiniPlayer(videoId, { autoplay: pendingAutoplay, onEnded: () => onVideoEnded?.(node.id) });
+        miniPlayer = createMiniPlayer(videoId, {
+          autoplay: pendingAutoplay,
+          onEnded: () => onVideoEnded?.(node.id),
+          onSkipPrevious: () => onSkipPrevious?.(),
+          onSkipNext: () => onSkipNext?.(),
+        });
         pendingAutoplay = false;
       }
+      miniPlayer.setSkipState(getSkipState?.());
       videoSlotEl.replaceWith(miniPlayer.element);
     }
 

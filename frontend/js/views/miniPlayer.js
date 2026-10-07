@@ -16,11 +16,13 @@ function clamp(value, min, max) {
 // across their own re-renders as needed — this module never destroys the
 // player just because its element was temporarily unmounted, only when
 // `destroy()` is called explicitly (track switched, or panel closed).
-export function createMiniPlayer(videoId, { autoplay = false, onEnded } = {}) {
+export function createMiniPlayer(videoId, { autoplay = false, onEnded, onSkipPrevious, onSkipNext } = {}) {
   const element = document.createElement('div');
   element.className = 'popup-video mini-player';
   element.innerHTML = `
     <div class="mini-player-frame"></div>
+    <button class="mini-player-prev" title="Previous track"><i class="fa-solid fa-backward-step" aria-hidden="true"></i></button>
+    <button class="mini-player-next" title="Next track"><i class="fa-solid fa-forward-step" aria-hidden="true"></i></button>
     <div class="mini-player-controls">
       <button class="mini-player-toggle" title="Play"><i class="fa-solid fa-play" aria-hidden="true"></i></button>
       <div class="mini-player-scrub"><div class="mini-player-scrub-fill"></div></div>
@@ -28,11 +30,23 @@ export function createMiniPlayer(videoId, { autoplay = false, onEnded } = {}) {
     </div>`;
 
   const frameEl = element.querySelector('.mini-player-frame');
+  const prevEl = element.querySelector('.mini-player-prev');
   const toggleEl = element.querySelector('.mini-player-toggle');
   const toggleIconEl = toggleEl.querySelector('i');
+  const nextEl = element.querySelector('.mini-player-next');
   const scrubEl = element.querySelector('.mini-player-scrub');
   const scrubFillEl = element.querySelector('.mini-player-scrub-fill');
   const timeEl = element.querySelector('.mini-player-time');
+
+  prevEl.disabled = true;
+  nextEl.disabled = true;
+  prevEl.addEventListener('click', () => onSkipPrevious?.());
+  nextEl.addEventListener('click', () => onSkipNext?.());
+
+  function setSkipState({ canPrevious = false, canNext = false } = {}) {
+    prevEl.disabled = !canPrevious;
+    nextEl.disabled = !canNext;
+  }
 
   let player = null;
   let destroyed = false;
@@ -126,5 +140,5 @@ export function createMiniPlayer(videoId, { autoplay = false, onEnded } = {}) {
     player = null;
   }
 
-  return { element, videoId, destroy };
+  return { element, videoId, destroy, setSkipState };
 }

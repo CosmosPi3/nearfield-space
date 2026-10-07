@@ -1087,6 +1087,46 @@ html, body {
 #node-detail-panel .mini-player-toggle:hover, #library-node-panel .mini-player-toggle:hover { background: var(--accent); color: #06131f; }
 #node-detail-panel .mini-player-toggle i, #library-node-panel .mini-player-toggle i { font-size: 8px; }
 
+/* Prev/next sit directly on the video itself, flanking it left/right and
+   vertically centered, rather than in the bottom controls bar — bigger than
+   the play/pause toggle since they're the primary skip-the-walk action. */
+#node-detail-panel .mini-player-prev, #library-node-panel .mini-player-prev,
+#node-detail-panel .mini-player-next, #library-node-panel .mini-player-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+}
+#node-detail-panel .mini-player-prev, #library-node-panel .mini-player-prev { left: 8px; }
+#node-detail-panel .mini-player-next, #library-node-panel .mini-player-next { right: 8px; }
+#node-detail-panel .mini-player-prev:hover, #library-node-panel .mini-player-prev:hover,
+#node-detail-panel .mini-player-next:hover, #library-node-panel .mini-player-next:hover { background: var(--accent); color: #06131f; }
+#node-detail-panel .mini-player-prev i, #library-node-panel .mini-player-prev i,
+#node-detail-panel .mini-player-next i, #library-node-panel .mini-player-next i { font-size: 13px; }
+#node-detail-panel .mini-player-prev:disabled, #library-node-panel .mini-player-prev:disabled,
+#node-detail-panel .mini-player-next:disabled, #library-node-panel .mini-player-next:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--text);
+}
+#node-detail-panel .mini-player-prev:disabled:hover, #library-node-panel .mini-player-prev:disabled:hover,
+#node-detail-panel .mini-player-next:disabled:hover, #library-node-panel .mini-player-next:disabled:hover {
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--text);
+}
+
 #node-detail-panel .mini-player-scrub, #library-node-panel .mini-player-scrub {
   position: relative;
   flex: 1 1 auto;

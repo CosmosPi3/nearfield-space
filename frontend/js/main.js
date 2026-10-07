@@ -187,15 +187,23 @@ let lastWorkspaceNodeId = null;
 let lastLibraryNodeId = null;
 
 // --- Autoplay: walk the graph, hopping to the closest still-unplayed track
-// each time the current video ends. `playedNodeIds` tracks the current
-// walk's visited set (never-repeat within one walk) and is shared across
-// both the Discovery and Library popups below — reset whenever the toggle
-// switches on, or whenever a node is opened manually rather than by
-// autoplay itself, since a manual click starts a fresh walk from there.
+// each time the current video ends. `walkHistory`/`walkIndex` track the
+// current walk as an ordered sequence with a position in it (not just a
+// visited set) so the user can also step back/forward through it manually
+// (see skip helpers below) — shared across both the Discovery and Library
+// popups, same as the walk itself: reset whenever the toggle switches on, or
+// whenever a node is opened manually rather than by autoplay/skip, since a
+// manual click starts a fresh walk from there.
 const AUTOPLAY_STORAGE_KEY = 'nearfieldspace:autoplay';
 const autoplayToggleButtonEl = document.getElementById('autoplay-toggle-button');
 let autoplayEnabled = localStorage.getItem(AUTOPLAY_STORAGE_KEY) === 'true';
-let playedNodeIds = new Set();
+let walkHistory = [];
+let walkIndex = -1;
+
+function resetWalk(nodeId) {
+  walkHistory = nodeId != null ? [nodeId] : [];
+  walkIndex = walkHistory.length - 1;
+}
 
 function updateAutoplayButtonUI() {
   autoplayToggleButtonEl.classList.toggle('active', autoplayEnabled);
@@ -206,10 +214,93 @@ updateAutoplayButtonUI();
 autoplayToggleButtonEl.addEventListener('click', () => {
   autoplayEnabled = !autoplayEnabled;
   localStorage.setItem(AUTOPLAY_STORAGE_KEY, String(autoplayEnabled));
-  if (autoplayEnabled) playedNodeIds = new Set();
+  if (autoplayEnabled) resetWalk(walkHistory[walkIndex] ?? null);
   updateAutoplayButtonUI();
   showToast(autoplayEnabled ? 'Autoplay enabled' : 'Autoplay disabled', { variant: 'autoplay' });
 });
+
+// Closest still-unplayed neighbor to `nodeId` within this walk, or null if
+// none remain — shared by auto-advance-on-video-end, manual skip-forward,
+// and the "can we even skip forward" disabled-state check.
+function findNextWorkspaceCandidate(nodeId, excludeIds) {
+  return graphViewModel.graphState.neighborsOf(nodeId)
+    .map(({ otherId, similarity }) => ({ id: otherId, similarity, node: graphViewModel.graphState.nodes.get(otherId) }))
+    .filter(({ id, node }) => node?.status === 'ready' && !excludeIds.has(id))
+    .sort((a, b) => (b.similarity ?? -Infinity) - (a.similarity ?? -Infinity))[0] ?? null;
+}
+
+// Advances the walk by one hop and returns the node to open, or null if
+// there's nowhere left to go. Replays existing forward history (from an
+// earlier skip-back) rather than recomputing it, so back-then-forward lands
+// on the exact same track; only once past the walk's tip does it compute a
+// fresh "closest unplayed neighbor" hop.
+function workspaceAdvanceForward() {
+  if (walkIndex < walkHistory.length - 1) {
+    const node = graphViewModel.graphState.nodes.get(walkHistory[walkIndex + 1]);
+    if (node) { walkIndex += 1; return node; }
+    walkHistory = walkHistory.slice(0, walkIndex + 1); // stale forward entry (node since removed) — drop it
+  }
+  const candidate = findNextWorkspaceCandidate(walkHistory[walkIndex], new Set(walkHistory));
+  if (!candidate) return null;
+  walkHistory.push(candidate.id);
+  walkIndex = walkHistory.length - 1;
+  return candidate.node;
+}
+
+// Steps the walk back by one hop and returns the node to open, or null if
+// already at the start. Skips past any history entry whose node has since
+// been removed from the graph instead of getting stuck on it.
+function workspaceStepBack() {
+  while (walkIndex > 0) {
+    const node = graphViewModel.graphState.nodes.get(walkHistory[walkIndex - 1]);
+    if (node) { walkIndex -= 1; return node; }
+    walkHistory.splice(walkIndex - 1, 1);
+    walkIndex -= 1;
+  }
+  return null;
+}
+
+// Library tab analogs — same shape, but resolve nodes/candidates against the
+// library graph's own {nodes, links} rather than the workspace's graphState.
+function findNextLibraryCandidate(nodeId, excludeIds) {
+  const { nodes: libNodes, links: libLinks } = libraryGraphViewModel.getState();
+  const nodeLookup = new Map(libNodes.map((n) => [n.id, n]));
+  return libLinks
+    .map((l) => {
+      const a = endpointNode(l.source, nodeLookup);
+      const b = endpointNode(l.target, nodeLookup);
+      if (!a || !b) return null;
+      if (a.id === nodeId) return { id: b.id, node: b, similarity: l.cosineScore };
+      if (b.id === nodeId) return { id: a.id, node: a, similarity: l.cosineScore };
+      return null;
+    })
+    .filter(Boolean)
+    .filter(({ id }) => !excludeIds.has(id))
+    .sort((x, y) => (y.similarity ?? -Infinity) - (x.similarity ?? -Infinity))[0] ?? null;
+}
+
+function libraryAdvanceForward() {
+  if (walkIndex < walkHistory.length - 1) {
+    const node = libraryGraphViewModel.getState().nodes.find((n) => n.id === walkHistory[walkIndex + 1]);
+    if (node) { walkIndex += 1; return node; }
+    walkHistory = walkHistory.slice(0, walkIndex + 1);
+  }
+  const candidate = findNextLibraryCandidate(walkHistory[walkIndex], new Set(walkHistory));
+  if (!candidate) return null;
+  walkHistory.push(candidate.id);
+  walkIndex = walkHistory.length - 1;
+  return candidate.node;
+}
+
+function libraryStepBack() {
+  while (walkIndex > 0) {
+    const node = libraryGraphViewModel.getState().nodes.find((n) => n.id === walkHistory[walkIndex - 1]);
+    if (node) { walkIndex -= 1; return node; }
+    walkHistory.splice(walkIndex - 1, 1);
+    walkIndex -= 1;
+  }
+  return null;
+}
 
 createSeedListView({
   listEl: document.getElementById('seed-tracks-list'),
@@ -229,33 +320,45 @@ const nodeDetailPanel = createNodeDetailPanel({
     graphView.setSelectedNodeId(nodeId);
     topSimilarView.setSelectedNodeId(nodeId);
     if (nodeId != null) lastWorkspaceNodeId = nodeId;
-    // A manual open (not one autoplay drove itself) restarts the walk from
-    // here — otherwise a track played earlier in a previous hop stays
+    // A manual open (not one autoplay/skip drove itself) restarts the walk
+    // from here — otherwise a track played earlier in a previous hop stays
     // excluded forever, even though it may be this node's actual closest
     // neighbor now that we've navigated back to it.
-    if (nodeId != null && !autoplay) playedNodeIds = new Set();
+    if (nodeId != null && !autoplay) resetWalk(nodeId);
     workspacePopupOpen = nodeId != null;
     updateAccountChipOffset();
   },
   onItemHover: (nodeId) => graphView.setHoveredNodeId(nodeId),
   onViewInLibrary: (nodeId) => viewInLibrary(nodeId),
-  onVideoEnded: (nodeId) => {
+  onVideoEnded: () => {
     if (!autoplayEnabled) return;
-    playedNodeIds.add(nodeId);
-    const next = graphViewModel.graphState.neighborsOf(nodeId)
-      .map(({ otherId, similarity }) => ({ id: otherId, similarity, node: graphViewModel.graphState.nodes.get(otherId) }))
-      .filter(({ id, node }) => node?.status === 'ready' && !playedNodeIds.has(id))
-      .sort((a, b) => (b.similarity ?? -Infinity) - (a.similarity ?? -Infinity))[0];
-    if (!next) {
+    const node = workspaceAdvanceForward();
+    if (!node) {
       autoplayEnabled = false;
       localStorage.setItem(AUTOPLAY_STORAGE_KEY, 'false');
       updateAutoplayButtonUI();
       showToast('Autoplay disabled — no more tracks to play', { variant: 'autoplay' });
       return;
     }
-    nodeDetailPanel.open(next.node, { autoplay: true });
-    graphView.centerOnNode(next.id);
+    nodeDetailPanel.open(node, { autoplay: true });
+    graphView.centerOnNode(node.id);
   },
+  onSkipPrevious: () => {
+    const node = workspaceStepBack();
+    if (!node) return; // nothing to go back to — button is disabled anyway
+    nodeDetailPanel.open(node, { autoplay: true });
+    graphView.centerOnNode(node.id);
+  },
+  onSkipNext: () => {
+    const node = workspaceAdvanceForward();
+    if (!node) return; // end of walk — no autoplay-disable side effect here, that's onVideoEnded-only
+    nodeDetailPanel.open(node, { autoplay: true });
+    graphView.centerOnNode(node.id);
+  },
+  getSkipState: () => ({
+    canPrevious: walkIndex > 0,
+    canNext: walkIndex < walkHistory.length - 1 || !!findNextWorkspaceCandidate(walkHistory[walkIndex], new Set(walkHistory)),
+  }),
 });
 
 setupDiscoveryToasts({ graphViewModel });
@@ -515,42 +618,44 @@ const libraryNodePopup = createLibraryNodePopup({
   onSelectionChange: (nodeId, { autoplay = false } = {}) => {
     libraryGraphView.setSelectedNodeId(nodeId);
     if (nodeId != null) lastLibraryNodeId = nodeId;
-    if (nodeId != null && !autoplay) playedNodeIds = new Set();
+    if (nodeId != null && !autoplay) resetWalk(nodeId);
     libraryPopupOpen = nodeId != null;
     updateAccountChipOffset();
   },
-  onVideoEnded: (nodeId) => {
+  // Library has no separate "graph state" model — its edges are just the
+  // currently-loaded {nodes, links} in the view model (only pairs above the
+  // Min similarity threshold are even present), so "closest" (in
+  // findNextLibraryCandidate) means closest among those already-drawn
+  // edges, same idea as the workspace but scoped to whatever's rendered.
+  onVideoEnded: () => {
     if (!autoplayEnabled) return;
-    playedNodeIds.add(nodeId);
-    // Library has no separate "graph state" model — its edges are just the
-    // currently-loaded {nodes, links} in the view model (only pairs above
-    // the Min similarity threshold are even present), so "closest" here
-    // means closest among those already-drawn edges, same idea as the
-    // workspace but scoped to whatever's actually rendered.
-    const { nodes: libNodes, links: libLinks } = libraryGraphViewModel.getState();
-    const nodeLookup = new Map(libNodes.map((n) => [n.id, n]));
-    const next = libLinks
-      .map((l) => {
-        const a = endpointNode(l.source, nodeLookup);
-        const b = endpointNode(l.target, nodeLookup);
-        if (!a || !b) return null;
-        if (a.id === nodeId) return { id: b.id, node: b, similarity: l.cosineScore };
-        if (b.id === nodeId) return { id: a.id, node: a, similarity: l.cosineScore };
-        return null;
-      })
-      .filter(Boolean)
-      .filter(({ id }) => !playedNodeIds.has(id))
-      .sort((x, y) => (y.similarity ?? -Infinity) - (x.similarity ?? -Infinity))[0];
-    if (!next) {
+    const node = libraryAdvanceForward();
+    if (!node) {
       autoplayEnabled = false;
       localStorage.setItem(AUTOPLAY_STORAGE_KEY, 'false');
       updateAutoplayButtonUI();
       showToast('Autoplay disabled — no more tracks to play', { variant: 'autoplay' });
       return;
     }
-    libraryNodePopup.open(next.node, { autoplay: true });
-    libraryGraphView.centerOnNode(next.id);
+    libraryNodePopup.open(node, { autoplay: true });
+    libraryGraphView.centerOnNode(node.id);
   },
+  onSkipPrevious: () => {
+    const node = libraryStepBack();
+    if (!node) return;
+    libraryNodePopup.open(node, { autoplay: true });
+    libraryGraphView.centerOnNode(node.id);
+  },
+  onSkipNext: () => {
+    const node = libraryAdvanceForward();
+    if (!node) return;
+    libraryNodePopup.open(node, { autoplay: true });
+    libraryGraphView.centerOnNode(node.id);
+  },
+  getSkipState: () => ({
+    canPrevious: walkIndex > 0,
+    canNext: walkIndex < walkHistory.length - 1 || !!findNextLibraryCandidate(walkHistory[walkIndex], new Set(walkHistory)),
+  }),
 });
 
 createFavouritesListView({
@@ -576,6 +681,29 @@ favouritesModalOverlayEl.addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') favouritesModalOverlayEl.classList.add('hidden');
+});
+
+// Left/Right skip through whichever popup's walk is currently open — guarded
+// out of text inputs and the Graph options range-slider thumbs (which
+// already use arrow keys themselves, via role="slider").
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  if (e.target.closest('input, textarea, select, [contenteditable="true"], [role="slider"]')) return;
+  if (workspacePopupOpen) {
+    e.preventDefault();
+    const node = e.key === 'ArrowLeft' ? workspaceStepBack() : workspaceAdvanceForward();
+    if (node) {
+      nodeDetailPanel.open(node, { autoplay: true });
+      graphView.centerOnNode(node.id);
+    }
+  } else if (libraryPopupOpen) {
+    e.preventDefault();
+    const node = e.key === 'ArrowLeft' ? libraryStepBack() : libraryAdvanceForward();
+    if (node) {
+      libraryNodePopup.open(node, { autoplay: true });
+      libraryGraphView.centerOnNode(node.id);
+    }
+  }
 });
 
 const workspaceTabButton = document.getElementById('tab-workspace-button');
