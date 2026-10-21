@@ -50,16 +50,26 @@ function touchesPinnedNode(link, graphState) {
   return endpointNode(link.source, graphState.nodes)?.kind === 'seed' || endpointNode(link.target, graphState.nodes)?.kind === 'seed';
 }
 
-// Selection ring sits outside the node's own border so it reads as a halo
-// rather than competing with the border's status/kind color.
-const SELECTED_RING_COLOR = 'rgba(94,180,255,0.65)';
-const SELECTED_RING_PADDING = 2;
-const SELECTED_RING_WIDTH = 5.5;
+// Pinned ring sits just outside the node's own border — matches the blue
+// used for a pinned track everywhere else (sidebar tint, SEED_LINK_COLOR).
+// Always drawn for a pinned node regardless of hover/selection, same as the
+// favourite glow is always drawn for a favourited node.
+const PINNED_RING_COLOR = 'rgba(94,180,255,0.65)';
+const PINNED_RING_PADDING = 2;
+const PINNED_RING_WIDTH = 3;
 
-// Softer/dimmer than the selection ring so hovering a list item never reads
-// as "this is now selected" — it's just a preview.
+// Selection ring sits outside the pinned ring (same hue family would be
+// ambiguous, so this is tertiary/amber) so a pinned+selected node reads as
+// two concentric rings rather than one blob.
+const SELECTED_RING_COLOR = 'rgba(242,177,52,0.85)';
+const SELECTED_RING_PADDING = 6;
+const SELECTED_RING_WIDTH = 3.5;
+
+// Drawn outermost and independently of pinned/selected — hover is transient
+// pointer feedback and should always be visible on top, never suppressed by
+// a more persistent state.
 const HOVERED_RING_COLOR = 'rgba(255,181,71,0.65)';
-const HOVERED_RING_PADDING = 4;
+const HOVERED_RING_PADDING = 9;
 const HOVERED_RING_WIDTH = 1.5;
 
 // Soft halo behind a favourited node — same pink/red as --favourite in
@@ -73,9 +83,11 @@ const FAVOURITE_GLOW_RADIUS_MULT = 2;
 
 // Deliberately not the same blue as SEED_LINK_COLOR — a hovered edge and a
 // pinned-track edge are different facts about a link, and sharing a color
-// would make it ambiguous which one a highlighted edge is signaling.
+// would make it ambiguous which one a highlighted edge is signaling. Selected
+// adds a third distinct hue (tertiary) for the same reason.
 const HOVERED_LINK_COLOR = 'rgba(255,181,71,0.9)';
 const HOVERED_LINK_WIDTH_BOOST = 1.5;
+const SELECTED_LINK_COLOR = 'rgba(242,177,52,0.75)';
 
 export function createGraphView({
   containerEl,
@@ -128,6 +140,16 @@ export function createGraphView({
         ctx.restore();
       }
 
+      if (node.kind === 'seed') {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, radius + PINNED_RING_PADDING, 0, 2 * Math.PI);
+        ctx.lineWidth = PINNED_RING_WIDTH;
+        ctx.strokeStyle = PINNED_RING_COLOR;
+        ctx.stroke();
+        ctx.restore();
+      }
+
       if (node.id === selectedNodeId) {
         ctx.save();
         ctx.beginPath();
@@ -136,7 +158,9 @@ export function createGraphView({
         ctx.strokeStyle = SELECTED_RING_COLOR;
         ctx.stroke();
         ctx.restore();
-      } else if (node.id === hoveredNodeId) {
+      }
+
+      if (node.id === hoveredNodeId) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(node.x, node.y, radius + HOVERED_RING_PADDING, 0, 2 * Math.PI);
@@ -177,6 +201,8 @@ export function createGraphView({
     .linkColor((l) =>
       linkTouchesNode(l, hoveredNodeId, graphViewModel.graphState.nodes)
         ? HOVERED_LINK_COLOR
+        : linkTouchesNode(l, selectedNodeId, graphViewModel.graphState.nodes)
+        ? SELECTED_LINK_COLOR
         : touchesPinnedNode(l, graphViewModel.graphState) ? SEED_LINK_COLOR : NEUTRAL_LINK_COLOR
     )
     .linkWidth((l) => {
@@ -197,7 +223,7 @@ export function createGraphView({
       const midY = (source.y + target.y) / 2;
       const fontSize = 12 / globalScale;
       ctx.font = `${fontSize}px sans-serif`;
-      ctx.fillStyle = 'rgba(230,232,238,0.9)';
+      ctx.fillStyle = 'rgba(242,177,52,0.9)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(toDisplayScore(link.similarity).toFixed(2), midX, midY);

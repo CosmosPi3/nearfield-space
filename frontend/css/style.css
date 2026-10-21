@@ -755,7 +755,10 @@ html, body {
   padding: 16px;
   padding-top: 40px;
   overflow-y: auto;
-  box-shadow: -8px 0 24px rgba(0,0,0,0.4);
+  /* Second, wider/softer layer in tertiary — reads as a glow leaking out
+     from behind the panel into the graph view beside it, distinct from the
+     tight dark drop-shadow that gives the panel its own depth. */
+  box-shadow: -8px 0 24px rgba(0,0,0,0.4), -16px 0 40px rgba(242,177,52,0.15);
 }
 
 #node-detail-panel.hidden { display: none; }
@@ -772,7 +775,10 @@ html, body {
   padding: 16px;
   padding-top: 40px;
   overflow-y: auto;
-  box-shadow: -8px 0 24px rgba(0,0,0,0.4);
+  /* Second, wider/softer layer in tertiary — reads as a glow leaking out
+     from behind the panel into the graph view beside it, distinct from the
+     tight dark drop-shadow that gives the panel its own depth. */
+  box-shadow: -8px 0 24px rgba(0,0,0,0.4), -16px 0 40px rgba(242,177,52,0.15);
 }
 
 #library-node-panel.hidden { display: none; }
@@ -1803,7 +1809,9 @@ html, body {
     padding-top: 16px;
     border-left: none;
     border-radius: var(--radius) var(--radius) 0 0;
-    box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
+    /* Same tertiary glow as the desktop panel, just flipped to leak
+       upward — the bottom sheet's only exposed graph-view edge is above it. */
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.4), 0 -16px 40px rgba(242,177,52,0.15);
     transform: translateX(-50%);
   }
 

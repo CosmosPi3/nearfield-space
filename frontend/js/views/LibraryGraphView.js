@@ -30,13 +30,15 @@ const HOVERED_LINK_WIDTH_BOOST = 1.5;
 // with the side that didn't match.
 const DIMMED_NODE_ALPHA = 0.25;
 const DIMMED_LINK_COLOR = 'rgba(230,232,238,0.08)';
-// Deliberately bolder than GraphView's own selection ring (2px/2px padding)
-// — the library graph has no seed/discovered color coding to help a node
-// stand out, so selection needs to carry more weight on its own here.
-const SELECTED_RING_COLOR = 'rgba(255,255,255,0.9)';
+// Tertiary/amber, matching GraphView's selected ring for cross-view
+// consistency. Deliberately bolder than GraphView's pinned ring (6px/3px
+// padding/width vs. 2px/3px) — the library graph has no seed/discovered
+// color coding to help a node stand out, so selection needs to carry more
+// weight on its own here.
+const SELECTED_RING_COLOR = 'rgba(242,177,52,0.85)';
 const SELECTED_RING_PADDING = 6;
 const SELECTED_RING_WIDTH = 3;
-const SELECTED_LINK_COLOR = 'rgba(94,180,255,0.75)';
+const SELECTED_LINK_COLOR = 'rgba(242,177,52,0.75)';
 const SELECTED_LINK_WIDTH_BOOST = 1.5;
 
 // Soft halo behind a favourited node — same pink/red as --favourite in
@@ -272,10 +274,12 @@ export function createLibraryGraphView({
         ctx.strokeStyle = SELECTED_RING_COLOR;
         ctx.stroke();
         ctx.restore();
-      } else if (node.id === hoveredNodeId) {
+      }
+
+      if (node.id === hoveredNodeId) {
         ctx.save();
         ctx.beginPath();
-        ctx.arc(node.x, node.y, radius + 4, 0, 2 * Math.PI);
+        ctx.arc(node.x, node.y, radius + 9, 0, 2 * Math.PI);
         ctx.lineWidth = 1.5;
         ctx.strokeStyle = 'rgba(94,180,255,0.65)';
         ctx.stroke();
@@ -312,14 +316,14 @@ export function createLibraryGraphView({
       ctx.fill();
     })
     .linkColor((l) => {
-      if (linkTouchesNode(l, selectedNodeId, nodeLookup)) return SELECTED_LINK_COLOR;
       if (linkTouchesNode(l, hoveredNodeId, nodeLookup)) return HOVERED_LINK_COLOR;
+      if (linkTouchesNode(l, selectedNodeId, nodeLookup)) return SELECTED_LINK_COLOR;
       return linkIsDimmed(l) ? DIMMED_LINK_COLOR : NEUTRAL_LINK_COLOR;
     })
     .linkWidth((l) => {
       const width = linkWidthForSimilarity(l.cosineScore, toDisplayScore(currentThreshold));
-      if (linkTouchesNode(l, selectedNodeId, nodeLookup)) return width + SELECTED_LINK_WIDTH_BOOST;
-      return linkTouchesNode(l, hoveredNodeId, nodeLookup) ? width + HOVERED_LINK_WIDTH_BOOST : width;
+      if (linkTouchesNode(l, hoveredNodeId, nodeLookup)) return width + HOVERED_LINK_WIDTH_BOOST;
+      return linkTouchesNode(l, selectedNodeId, nodeLookup) ? width + SELECTED_LINK_WIDTH_BOOST : width;
     })
     .onNodeClick((node, event) => onNodeClick?.(node, event))
     .onNodeHover((node) => setHoveredNodeId(node?.id ?? null));
